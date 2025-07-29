@@ -1,22 +1,19 @@
-import { Container, Row, Col, Card } from 'react-bootstrap'
+import Container from 'react-bootstrap/Container'
+import Navigation from './components/Navigation'
+
+import './styles/custom-bootstrap.scss'
 import './App.css'
 
 function App() {
   return (
-    <Container fluid className="App">
-      <Row className="justify-content-center mt-5">
-        <Col md={8} lg={6}>
-          <Card>
-            <Card.Body className="text-center">
-              <Card.Title as="h1">Practice Makes Perfect</Card.Title>
-              <Card.Text>
-                A learning platform that creates content that grows with you.
-              </Card.Text>
-            </Card.Body>
-          </Card>
-        </Col>
-      </Row>
-    </Container>
+    <>
+      <Navigation />
+      <Container fluid className="App">
+        <h1>Lightbulb moments</h1> 
+        <h1>with</h1>
+        <h1 class="accent">Practice Makes Perfect.</h1>
+      </Container>
+    </>
   )
 }
 

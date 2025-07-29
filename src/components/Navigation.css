@@ -1,0 +1,16 @@
+.nav-container {
+  max-width: 1344px;
+}
+
+/* Target the specific dropdown toggle button */
+.navbar .dropdown-toggle {
+  color: #000000 !important;
+}
+
+/* Also target when it's focused/active */
+.navbar .dropdown-toggle:hover,
+.navbar .dropdown-toggle:focus,
+.navbar .dropdown-toggle:active,
+.navbar .dropdown-toggle.show {
+  color: #000000 !important;
+}

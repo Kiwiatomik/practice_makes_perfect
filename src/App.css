@@ -4,7 +4,11 @@
 }
 
 h1 {
-  color: #333;
-  font-size: 2.5rem;
-  margin-bottom: 1rem;
+  color: white;
+  font-size: 42px;
+}
+
+.accent {
+  color: var(--bs-primary);
+  font-size: 84px;
 }

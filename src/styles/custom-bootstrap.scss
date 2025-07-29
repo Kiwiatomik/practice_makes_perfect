@@ -1,0 +1,28 @@
+// Custom Bootstrap variable overrides
+$primary: #ffd333;
+$dark: #1a1a1a;
+$light: #ffffff;
+
+// Set primary button text color to black
+$primary-color: #000000;
+
+// Custom spacing (adjust default paddings)
+$spacer: 1rem;
+$spacers: (
+  0: 0,
+  1: $spacer * 0.25,
+  2: $spacer * 0.5,
+  3: $spacer,
+  4: $spacer * 1.5,
+  5: $spacer * 3,
+);
+
+// Import Bootstrap
+@import "bootstrap/scss/bootstrap";
+
+// Export variables as CSS custom properties
+:root {
+  --bs-primary: #{$primary};
+  --bs-dark: #{$dark};
+  --bs-light: #{$light};
+}
