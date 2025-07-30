@@ -1,5 +1,12 @@
 .nav-container {
   max-width: 1344px;
+  min-height: 84px;
+}
+
+.navbar-brand img {
+  height: 32px;
+  width: auto;
+  rotate: -20deg;
 }
 
 /* Target the specific dropdown toggle button */

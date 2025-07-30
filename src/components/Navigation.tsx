@@ -3,6 +3,7 @@ import Nav from 'react-bootstrap/Nav'
 import NavDropdown from 'react-bootstrap/NavDropdown'
 import Container from 'react-bootstrap/Container'
 import Button from 'react-bootstrap/Button'
+import logoDark from '../assets/logo_dark.svg'
 
 import './Navigation.css'
 
@@ -11,21 +12,7 @@ const Navigation = () => {
     <Navbar bg="dark" variant="dark" expand="lg">
       <Container className="nav-container">
         <Navbar.Brand href="#home" className="d-flex align-items-center">
-          {/* Logo placeholder - you can add an actual logo image here */}
-          <div className="me-2" style={{
-            width: '32px',
-            height: '32px',
-            backgroundColor: '#ffffff',
-            borderRadius: '4px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '14px',
-            fontWeight: 'bold',
-            color: '#1a1a1a'
-          }}>
-            P
-          </div>
+          <img src={logoDark} alt="Practice Makes Perfect" className="me-2" />
           Practice Makes Perfect
         </Navbar.Brand>
         
