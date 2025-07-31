@@ -3,6 +3,12 @@
   padding: 2rem;
 }
 
+.page-content {
+  max-width: 672px;
+  width: 100%;
+  margin: 0 auto;
+}
+
 h1 {
   color: white;
   font-size: 42px;
