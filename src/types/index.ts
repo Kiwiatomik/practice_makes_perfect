@@ -31,3 +31,29 @@ export interface User {
   createdAt: Date;
   lastActive: Date;
 }
+
+export interface Lesson {
+  id: string;
+  title: string;
+  description: string;
+  createdBy: User;
+  content: string;
+  order: number;
+  duration: number; // in minutes
+  difficulty: 'Easy' | 'Medium' | 'Hard';
+  isCompleted?: boolean;
+}
+
+export interface Course {
+  id: string;
+  title: string;
+  description: string;
+  createdBy: User;
+  createdAt: Date;
+  updatedAt: Date;
+  level: 'High school' | 'Bachelor' | 'Master';
+  subject: string;
+  tags: string[];
+  lessons: Lesson[];
+  isPublic: boolean;
+}

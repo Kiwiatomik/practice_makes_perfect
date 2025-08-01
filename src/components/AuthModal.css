@@ -1,0 +1,102 @@
+/* Auth Modal Dark Theme Styles */
+
+/* Modal Structure */
+.auth-modal .modal-header {
+  background-color: #212529;
+  color: #ffffff;
+  border-bottom: 1px solid #6c757d;
+}
+
+.auth-modal .modal-body {
+  background-color: #212529;
+  color: #ffffff;
+}
+
+/* Form Controls */
+.auth-modal .form-label {
+  color: #ffffff;
+}
+
+.auth-modal .form-control {
+  background-color: #ffffff;
+  color: #212529;
+  border: 1px solid #dee2e6;
+}
+
+.auth-modal .form-control:focus {
+  background-color: #ffffff;
+  color: #212529;
+  border-color: #ffc107;
+  box-shadow: 0 0 0 0.2rem rgba(255, 193, 7, 0.25);
+}
+
+.auth-modal .form-control::placeholder {
+  color: #6c757d;
+}
+
+.auth-modal .form-control:disabled {
+  background-color: #e9ecef;
+  color: #6c757d;
+}
+
+/* Divider Text */
+.auth-modal .divider-text {
+  color: #f8f9fa;
+}
+
+/* Google Button */
+.auth-modal .google-btn {
+  border-color: #6c757d;
+  color: #ffffff;
+  background-color: transparent;
+  transition: all 0.3s ease;
+}
+
+.auth-modal .google-btn:hover {
+  background-color: #495057;
+  border-color: #6c757d;
+  color: #ffffff;
+}
+
+.auth-modal .google-btn:focus {
+  box-shadow: 0 0 0 0.2rem rgba(108, 117, 125, 0.25);
+}
+
+/* Switch Mode Link */
+.auth-modal .switch-mode-btn {
+  color: #ffffff;
+  transition: color 0.3s ease;
+}
+
+.auth-modal .switch-mode-btn:hover {
+  color: #ffc107;
+}
+
+.auth-modal .switch-mode-btn:focus {
+  color: #ffc107;
+  box-shadow: none;
+}
+
+/* Loading State */
+.auth-modal .loading .form-control {
+  background-color: #e9ecef;
+  color: #6c757d;
+}
+
+/* Background Blur Effect */
+.modal-backdrop-blur {
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+}
+
+/* Smooth transitions */
+.auth-modal .modal-content {
+  transition: all 0.3s ease-in-out;
+}
+
+/* Error Alert Styling */
+.auth-modal .alert-danger {
+  background-color: #721c24;
+  border-color: #842029;
+  color: #ea868f;
+}
