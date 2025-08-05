@@ -4,6 +4,8 @@ import Button from 'react-bootstrap/Button'
 import Form from 'react-bootstrap/Form'
 import Alert from 'react-bootstrap/Alert'
 import Spinner from 'react-bootstrap/Spinner'
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from 'firebase/auth'
+import { auth } from '../config/firebase'
 import './AuthModal.css'
 
 interface AuthModalProps {
@@ -80,39 +82,100 @@ const AuthModal = ({ show, onHide }: AuthModalProps) => {
         }
       }
 
-      // TODO: Implement Firebase authentication
-      console.log(`${authMode}:`, formData.email)
-      
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      // Firebase authentication
+      if (authMode === 'signup') {
+        await createUserWithEmailAndPassword(auth, formData.email, formData.password)
+      } else {
+        await signInWithEmailAndPassword(auth, formData.email, formData.password)
+      }
       
       // On success, close modal and reset form
       onHide()
       setFormData({ email: '', password: '', confirmPassword: '' })
       
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Authentication failed')
+      let errorMessage = 'Authentication failed'
+      
+      if (err instanceof Error) {
+        // Handle specific Firebase errors
+        switch (err.message) {
+          case 'Firebase: Error (auth/email-already-in-use).':
+            errorMessage = 'Email is already registered'
+            break
+          case 'Firebase: Error (auth/weak-password).':
+            errorMessage = 'Password is too weak'
+            break
+          case 'Firebase: Error (auth/user-not-found).':
+            errorMessage = 'No account found with this email'
+            break
+          case 'Firebase: Error (auth/wrong-password).':
+            errorMessage = 'Incorrect password'
+            break
+          case 'Firebase: Error (auth/invalid-email).':
+            errorMessage = 'Invalid email address'
+            break
+          case 'Firebase: Error (auth/too-many-requests).':
+            errorMessage = 'Too many failed attempts. Please try again later'
+            break
+          default:
+            errorMessage = err.message.includes('Firebase:') 
+              ? err.message.replace('Firebase: Error ', '').replace(/[()]/g, '')
+              : err.message
+        }
+      }
+      
+      setError(errorMessage)
     } finally {
       setLoading(false)
     }
   }
 
   const handleGoogleAuth = async () => {
+    console.log('AuthModal - Starting Google authentication')
     setLoading(true)
     setError('')
 
     try {
-      // TODO: Implement Google authentication
-      console.log('Google authentication')
+      const googleProvider = new GoogleAuthProvider()
+      googleProvider.setCustomParameters({
+        prompt: 'select_account'
+      })
       
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      console.log('AuthModal - Initiating popup for Google')
+      // Use popup for development - more reliable than redirect
+      const result = await signInWithPopup(auth, googleProvider)
+      console.log('AuthModal - Google auth successful:', result.user.email)
       
-      // On success, close modal
+      // On success, close modal and reset form
       onHide()
       
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Google authentication failed')
+      console.error('AuthModal - Google auth error:', err)
+      let errorMessage = 'Google authentication failed'
+      
+      if (err instanceof Error) {
+        // Handle specific Firebase errors
+        switch (err.code || err.message) {
+          case 'auth/popup-closed-by-user':
+            errorMessage = 'Sign-in cancelled'
+            break
+          case 'auth/popup-blocked':
+            errorMessage = 'Popup blocked by browser. Please allow popups and try again'
+            break
+          case 'auth/cancelled-popup-request':
+            errorMessage = 'Sign-in cancelled'
+            break
+          case 'auth/account-exists-with-different-credential':
+            errorMessage = 'Account exists with different sign-in method'
+            break
+          default:
+            errorMessage = err.message.includes('Firebase:') 
+              ? err.message.replace('Firebase: Error ', '').replace(/[()]/g, '')
+              : err.message
+        }
+      }
+      
+      setError(errorMessage)
     } finally {
       setLoading(false)
     }

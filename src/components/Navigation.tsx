@@ -3,14 +3,25 @@ import Navbar from 'react-bootstrap/Navbar'
 import Nav from 'react-bootstrap/Nav'
 import NavDropdown from 'react-bootstrap/NavDropdown'
 import Container from 'react-bootstrap/Container'
+import Button from 'react-bootstrap/Button'
 import { Link } from 'react-router'
 import logoDark from '../assets/logo_dark.svg'
 import AuthModal from './AuthModal'
+import { useAuth } from '../contexts/AuthContext'
 
 import './Navigation.css'
 
 const Navigation = () => {
   const [showAuthModal, setShowAuthModal] = useState(false)
+  const { currentUser, logout } = useAuth()
+
+  const handleLogout = async () => {
+    try {
+      await logout()
+    } catch (error) {
+      console.error('Error logging out:', error)
+    }
+  }
 
   return (
     <>
@@ -28,10 +39,29 @@ const Navigation = () => {
               <NavDropdown.Item as={Link} to="/dashboard">Dashboard</NavDropdown.Item>
               <NavDropdown.Item as={Link} to="/courses">All Courses</NavDropdown.Item>
               <NavDropdown.Item as={Link} to="/lesson">Lesson</NavDropdown.Item>
-              <NavDropdown.Divider />
-              <NavDropdown.Item onClick={() => setShowAuthModal(true)}>Login</NavDropdown.Item>
-              <NavDropdown.Item href="#logout">Logout</NavDropdown.Item>
+              {currentUser && (
+                <>
+                  <NavDropdown.Divider />
+                  <NavDropdown.Item onClick={handleLogout}>Logout</NavDropdown.Item>
+                </>
+              )}
             </NavDropdown>
+            
+            {!currentUser && (
+              <Button 
+                variant="primary" 
+                onClick={() => setShowAuthModal(true)}
+                className="ms-2"
+              >
+                Login
+              </Button>
+            )}
+            
+            {currentUser && (
+              <Nav.Link className="text-light ms-2">
+                Welcome, {currentUser.displayName || currentUser.email}
+              </Nav.Link>
+            )}
           </Nav>
         </Navbar.Collapse>
       </Container>

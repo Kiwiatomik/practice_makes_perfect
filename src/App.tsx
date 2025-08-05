@@ -5,6 +5,7 @@ import Dashboard from './components/Dashboard'
 import Lesson from './components/Lesson'
 import Courses from './components/Courses'
 import CoursePage from './components/CoursePage'
+import ProtectedRoute from './components/ProtectedRoute'
 import './styles/custom-bootstrap.scss'
 import './App.css'
 
@@ -14,11 +15,23 @@ function App() {
       <Navigation />
       <Routes>
         <Route path="/" element={<Home />} />
-        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/dashboard" element={
+          <ProtectedRoute>
+            <Dashboard />
+          </ProtectedRoute>
+        } />
         <Route path="/courses" element={<Courses />} />
         <Route path="/course/:id" element={<CoursePage />} />
-        <Route path="/lesson" element={<Lesson />} />
-        <Route path="/lesson/:id" element={<Lesson />} />
+        <Route path="/lesson" element={
+          <ProtectedRoute>
+            <Lesson />
+          </ProtectedRoute>
+        } />
+        <Route path="/lesson/:id" element={
+          <ProtectedRoute>
+            <Lesson />
+          </ProtectedRoute>
+        } />
       </Routes>
     </Router>
   )
