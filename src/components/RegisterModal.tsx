@@ -231,8 +231,10 @@ const RegisterModal = ({ show, onHide, onSwitchToLogin }: RegisterModalProps) =>
           </Button>
         </Form>
 
-        <div className="text-center mb-3">
-          <span className="divider-text">or</span>
+        <div className="d-flex align-items-center mb-3">
+          <hr className="flex-grow-1" />
+          <span className="mx-3 text-muted" style={{ fontSize: '0.875rem' }}>or</span>
+          <hr className="flex-grow-1" />
         </div>
 
         <Button

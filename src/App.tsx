@@ -5,6 +5,7 @@ import Dashboard from './components/Dashboard'
 import Lesson from './components/Lesson'
 import Courses from './components/Courses'
 import CoursePage from './components/CoursePage'
+import Account from './components/Account'
 import ProtectedRoute from './components/ProtectedRoute'
 import './styles/custom-bootstrap.scss'
 import './App.css'
@@ -30,6 +31,11 @@ function App() {
         <Route path="/lesson/:id" element={
           <ProtectedRoute>
             <Lesson />
+          </ProtectedRoute>
+        } />
+        <Route path="/account" element={
+          <ProtectedRoute>
+            <Account />
           </ProtectedRoute>
         } />
       </Routes>

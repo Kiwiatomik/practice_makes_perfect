@@ -4,7 +4,7 @@ import Button from 'react-bootstrap/Button'
 import Form from 'react-bootstrap/Form'
 import Alert from 'react-bootstrap/Alert'
 import Spinner from 'react-bootstrap/Spinner'
-import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from 'firebase/auth'
+import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, sendPasswordResetEmail } from 'firebase/auth'
 import { auth } from '../config/firebase'
 import { useModalBlurEffect } from '../hooks/useModalBlurEffect'
 import './AuthModal.css'
@@ -22,6 +22,7 @@ const LoginModal = ({ show, onHide, onSwitchToRegister }: LoginModalProps) => {
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [resetEmailSent, setResetEmailSent] = useState(false)
 
   // Apply modal blur effect
   useModalBlurEffect({ show })
@@ -32,8 +33,9 @@ const LoginModal = ({ show, onHide, onSwitchToRegister }: LoginModalProps) => {
       ...prev,
       [name]: value
     }))
-    // Clear error when user starts typing
+    // Clear messages when user starts typing
     if (error) setError('')
+    if (resetEmailSent) setResetEmailSent(false)
   }
 
   const handleEmailPasswordLogin = async (e: React.FormEvent) => {
@@ -74,6 +76,45 @@ const LoginModal = ({ show, onHide, onSwitchToRegister }: LoginModalProps) => {
             break
           case 'Firebase: Error (auth/user-disabled).':
             errorMessage = 'This account has been disabled'
+            break
+          default:
+            errorMessage = err.message.includes('Firebase:') 
+              ? err.message.replace('Firebase: Error ', '').replace(/[()]/g, '')
+              : err.message
+        }
+      }
+      
+      setError(errorMessage)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleForgotPassword = async () => {
+    if (!formData.email) {
+      setError('Please enter your email address first')
+      return
+    }
+
+    setLoading(true)
+    setError('')
+
+    try {
+      await sendPasswordResetEmail(auth, formData.email)
+      setResetEmailSent(true)
+    } catch (err) {
+      let errorMessage = 'Failed to send password reset email'
+      
+      if (err instanceof Error) {
+        switch (err.code || err.message) {
+          case 'auth/user-not-found':
+            errorMessage = 'No account found with this email address'
+            break
+          case 'auth/invalid-email':
+            errorMessage = 'Invalid email address'
+            break
+          case 'auth/too-many-requests':
+            errorMessage = 'Too many requests. Please try again later'
             break
           default:
             errorMessage = err.message.includes('Firebase:') 
@@ -139,12 +180,14 @@ const LoginModal = ({ show, onHide, onSwitchToRegister }: LoginModalProps) => {
   const handleClose = () => {
     setFormData({ email: '', password: '' })
     setError('')
+    setResetEmailSent(false)
     onHide()
   }
 
   const handleSwitchToRegister = () => {
     setFormData({ email: '', password: '' })
     setError('')
+    setResetEmailSent(false)
     onSwitchToRegister()
   }
 
@@ -157,6 +200,12 @@ const LoginModal = ({ show, onHide, onSwitchToRegister }: LoginModalProps) => {
         {error && (
           <Alert variant="danger" className="mb-3">
             {error}
+          </Alert>
+        )}
+        
+        {resetEmailSent && (
+          <Alert variant="success" className="mb-3">
+            Password reset email sent! Check your inbox and follow the instructions to reset your password.
           </Alert>
         )}
 
@@ -175,7 +224,7 @@ const LoginModal = ({ show, onHide, onSwitchToRegister }: LoginModalProps) => {
             />
           </Form.Group>
 
-          <Form.Group className="mb-3">
+          <Form.Group className="mb-0">
             <Form.Label>Password</Form.Label>
             <Form.Control
               type="password"
@@ -187,6 +236,18 @@ const LoginModal = ({ show, onHide, onSwitchToRegister }: LoginModalProps) => {
               disabled={loading}
             />
           </Form.Group>
+
+          <div className="text-start mb-4">
+            <Button
+              variant="link"
+              onClick={handleForgotPassword}
+              disabled={loading}
+              className="text-decoration-none p-0"
+              style={{ fontSize: '0.875rem', color: '#6c757d' }}
+            >
+              Forgot password?
+            </Button>
+          </div>
 
           <Button
             variant="primary"
@@ -212,8 +273,10 @@ const LoginModal = ({ show, onHide, onSwitchToRegister }: LoginModalProps) => {
           </Button>
         </Form>
 
-        <div className="text-center mb-3">
-          <span className="divider-text">or</span>
+        <div className="d-flex align-items-center mt-1 mb-3">
+          <hr className="flex-grow-1" />
+          <span className="mx-3 text-muted" style={{ fontSize: '0.875rem' }}>or</span>
+          <hr className="flex-grow-1" />
         </div>
 
         <Button
