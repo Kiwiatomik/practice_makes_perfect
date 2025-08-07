@@ -1,56 +1,30 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import Modal from 'react-bootstrap/Modal'
 import Button from 'react-bootstrap/Button'
 import Form from 'react-bootstrap/Form'
 import Alert from 'react-bootstrap/Alert'
 import Spinner from 'react-bootstrap/Spinner'
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from 'firebase/auth'
+import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from 'firebase/auth'
 import { auth } from '../config/firebase'
+import { useModalBlurEffect } from '../hooks/useModalBlurEffect'
 import './AuthModal.css'
 
-interface AuthModalProps {
+interface LoginModalProps {
   show: boolean;
   onHide: () => void;
+  onSwitchToRegister: () => void;
 }
 
-type AuthMode = 'signin' | 'signup'
-
-const AuthModal = ({ show, onHide }: AuthModalProps) => {
-  const [authMode, setAuthMode] = useState<AuthMode>('signin')
+const LoginModal = ({ show, onHide, onSwitchToRegister }: LoginModalProps) => {
   const [formData, setFormData] = useState({
     email: '',
-    password: '',
-    confirmPassword: ''
+    password: ''
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  // Add blur effect to background when modal is open
-  useEffect(() => {
-    const bodyElement = document.body
-    const appElement = document.getElementById('root')
-    
-    if (show) {
-      if (appElement) {
-        appElement.style.filter = 'blur(3px)'
-        appElement.style.transition = 'filter 0.3s ease-in-out'
-      }
-      bodyElement.style.overflow = 'hidden'
-    } else {
-      if (appElement) {
-        appElement.style.filter = 'none'
-      }
-      bodyElement.style.overflow = 'unset'
-    }
-
-    // Cleanup function
-    return () => {
-      if (appElement) {
-        appElement.style.filter = 'none'
-      }
-      bodyElement.style.overflow = 'unset'
-    }
-  }, [show])
+  // Apply modal blur effect
+  useModalBlurEffect({ show })
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -62,7 +36,7 @@ const AuthModal = ({ show, onHide }: AuthModalProps) => {
     if (error) setError('')
   }
 
-  const handleEmailPasswordAuth = async (e: React.FormEvent) => {
+  const handleEmailPasswordLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError('')
@@ -73,25 +47,12 @@ const AuthModal = ({ show, onHide }: AuthModalProps) => {
         throw new Error('Please fill in all fields')
       }
 
-      if (authMode === 'signup') {
-        if (formData.password !== formData.confirmPassword) {
-          throw new Error('Passwords do not match')
-        }
-        if (formData.password.length < 6) {
-          throw new Error('Password must be at least 6 characters')
-        }
-      }
-
       // Firebase authentication
-      if (authMode === 'signup') {
-        await createUserWithEmailAndPassword(auth, formData.email, formData.password)
-      } else {
-        await signInWithEmailAndPassword(auth, formData.email, formData.password)
-      }
+      await signInWithEmailAndPassword(auth, formData.email, formData.password)
       
       // On success, close modal and reset form
       onHide()
-      setFormData({ email: '', password: '', confirmPassword: '' })
+      setFormData({ email: '', password: '' })
       
     } catch (err) {
       let errorMessage = 'Authentication failed'
@@ -99,12 +60,6 @@ const AuthModal = ({ show, onHide }: AuthModalProps) => {
       if (err instanceof Error) {
         // Handle specific Firebase errors
         switch (err.message) {
-          case 'Firebase: Error (auth/email-already-in-use).':
-            errorMessage = 'Email is already registered'
-            break
-          case 'Firebase: Error (auth/weak-password).':
-            errorMessage = 'Password is too weak'
-            break
           case 'Firebase: Error (auth/user-not-found).':
             errorMessage = 'No account found with this email'
             break
@@ -116,6 +71,9 @@ const AuthModal = ({ show, onHide }: AuthModalProps) => {
             break
           case 'Firebase: Error (auth/too-many-requests).':
             errorMessage = 'Too many failed attempts. Please try again later'
+            break
+          case 'Firebase: Error (auth/user-disabled).':
+            errorMessage = 'This account has been disabled'
             break
           default:
             errorMessage = err.message.includes('Firebase:') 
@@ -130,8 +88,7 @@ const AuthModal = ({ show, onHide }: AuthModalProps) => {
     }
   }
 
-  const handleGoogleAuth = async () => {
-    console.log('AuthModal - Starting Google authentication')
+  const handleGoogleLogin = async () => {
     setLoading(true)
     setError('')
 
@@ -141,16 +98,14 @@ const AuthModal = ({ show, onHide }: AuthModalProps) => {
         prompt: 'select_account'
       })
       
-      console.log('AuthModal - Initiating popup for Google')
       // Use popup for development - more reliable than redirect
-      const result = await signInWithPopup(auth, googleProvider)
-      console.log('AuthModal - Google auth successful:', result.user.email)
+      await signInWithPopup(auth, googleProvider)
       
-      // On success, close modal and reset form
+      // On success, close modal
       onHide()
       
     } catch (err) {
-      console.error('AuthModal - Google auth error:', err)
+      console.error('LoginModal - Google login error:', err)
       let errorMessage = 'Google authentication failed'
       
       if (err instanceof Error) {
@@ -181,25 +136,22 @@ const AuthModal = ({ show, onHide }: AuthModalProps) => {
     }
   }
 
-  const switchAuthMode = () => {
-    setAuthMode(prev => prev === 'signin' ? 'signup' : 'signin')
-    setFormData({ email: '', password: '', confirmPassword: '' })
+  const handleClose = () => {
+    setFormData({ email: '', password: '' })
     setError('')
+    onHide()
   }
 
-  const handleClose = () => {
-    setFormData({ email: '', password: '', confirmPassword: '' })
+  const handleSwitchToRegister = () => {
+    setFormData({ email: '', password: '' })
     setError('')
-    setAuthMode('signin')
-    onHide()
+    onSwitchToRegister()
   }
 
   return (
     <Modal show={show} onHide={handleClose} centered data-bs-theme="dark" className="auth-modal">
       <Modal.Header closeButton>
-        <Modal.Title>
-          {authMode === 'signin' ? 'Sign In' : 'Create Account'}
-        </Modal.Title>
+        <Modal.Title>Log In</Modal.Title>
       </Modal.Header>
       <Modal.Body>
         {error && (
@@ -208,7 +160,7 @@ const AuthModal = ({ show, onHide }: AuthModalProps) => {
           </Alert>
         )}
 
-        <Form onSubmit={handleEmailPasswordAuth}>
+        <Form onSubmit={handleEmailPasswordLogin}>
           <Form.Group className="mb-3">
             <Form.Label>Email address</Form.Label>
             <Form.Control
@@ -219,6 +171,7 @@ const AuthModal = ({ show, onHide }: AuthModalProps) => {
               placeholder="Enter your email"
               required
               disabled={loading}
+              autoFocus
             />
           </Form.Group>
 
@@ -234,21 +187,6 @@ const AuthModal = ({ show, onHide }: AuthModalProps) => {
               disabled={loading}
             />
           </Form.Group>
-
-          {authMode === 'signup' && (
-            <Form.Group className="mb-3">
-              <Form.Label>Confirm Password</Form.Label>
-              <Form.Control
-                type="password"
-                name="confirmPassword"
-                value={formData.confirmPassword}
-                onChange={handleInputChange}
-                placeholder="Confirm your password"
-                required
-                disabled={loading}
-              />
-            </Form.Group>
-          )}
 
           <Button
             variant="primary"
@@ -266,10 +204,10 @@ const AuthModal = ({ show, onHide }: AuthModalProps) => {
                   aria-hidden="true"
                   className="me-2"
                 />
-                {authMode === 'signin' ? 'Signing In...' : 'Creating Account...'}
+                Logging In...
               </>
             ) : (
-              authMode === 'signin' ? 'Sign In' : 'Create Account'
+              'Log In'
             )}
           </Button>
         </Form>
@@ -281,7 +219,7 @@ const AuthModal = ({ show, onHide }: AuthModalProps) => {
         <Button
           variant="outline-light"
           className="w-100 mb-3 google-btn"
-          onClick={handleGoogleAuth}
+          onClick={handleGoogleLogin}
           disabled={loading}
         >
           <svg
@@ -302,14 +240,11 @@ const AuthModal = ({ show, onHide }: AuthModalProps) => {
         <div className="text-center">
           <Button
             variant="link"
-            onClick={switchAuthMode}
+            onClick={handleSwitchToRegister}
             disabled={loading}
             className="text-decoration-none switch-mode-btn"
           >
-            {authMode === 'signin' 
-              ? "Don't have an account? Sign up" 
-              : "Already have an account? Sign in"
-            }
+            Don't have an account? Register
           </Button>
         </div>
       </Modal.Body>
@@ -317,4 +252,4 @@ const AuthModal = ({ show, onHide }: AuthModalProps) => {
   )
 }
 
-export default AuthModal
+export default LoginModal

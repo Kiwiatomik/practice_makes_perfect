@@ -84,9 +84,13 @@
 }
 
 /* Background Blur Effect */
-.modal-backdrop-blur {
-  backdrop-filter: blur(3px);
-  -webkit-backdrop-filter: blur(3px);
+#root.modal-blur-active {
+  filter: blur(3px);
+  transition: filter 0.3s ease-in-out;
+}
+
+body.modal-scroll-lock {
+  overflow: hidden;
 }
 
 /* Smooth transitions */
