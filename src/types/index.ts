@@ -32,6 +32,16 @@ export interface User {
   lastActive: Date;
 }
 
+export interface Prompt {
+  id: string;
+  checkedByHuman: boolean;
+  isGenerated: boolean;
+  isGoodEnough: boolean;
+  difficulty: 'Easy' | 'Medium' | 'Hard';
+  order: number;
+  text: string;
+}
+
 export interface Lesson {
   id: string;
   title: string;
@@ -42,6 +52,7 @@ export interface Lesson {
   duration: number; // in minutes
   difficulty: 'Easy' | 'Medium' | 'Hard';
   isCompleted?: boolean;
+  courseId?: string; // Optional field for when lesson is fetched individually
 }
 
 export interface Course {

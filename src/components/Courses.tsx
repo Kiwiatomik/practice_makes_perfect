@@ -7,114 +7,65 @@ import Button from 'react-bootstrap/Button'
 import Badge from 'react-bootstrap/Badge'
 import Form from 'react-bootstrap/Form'
 import InputGroup from 'react-bootstrap/InputGroup'
+import Alert from 'react-bootstrap/Alert'
 import { Link } from 'react-router'
 import { Course } from '../types'
+import { coursesService, CourseFilters } from '../services/coursesService'
 
-const mockCourses: Course[] = [
-  {
-    id: '1',
-    title: 'Introduction to Calculus',
-    description: 'Learn the fundamentals of differential calculus with step-by-step explanations and practice problems.',
-    createdBy: {
-      id: 'user1',
-      email: 'john@example.com',
-      displayName: 'John Smith',
-      createdAt: new Date('2024-01-15'),
-      lastActive: new Date('2024-07-30')
-    },
-    createdAt: new Date('2024-06-15'),
-    updatedAt: new Date('2024-07-20'),
-    level: 'Bachelor',
-    subject: 'Mathematics',
-    tags: ['calculus', 'derivatives', 'mathematics'],
-    lessons: [
-      { id: 'lesson-1-1', title: '', description: '', content: '', order: 1, duration: 15, difficulty: 'Easy', isCompleted: false },
-      { id: 'lesson-1-2', title: '', description: '', content: '', order: 2, duration: 25, difficulty: 'Medium', isCompleted: false },
-      { id: 'lesson-1-3', title: '', description: '', content: '', order: 3, duration: 30, difficulty: 'Medium', isCompleted: false },
-      { id: 'lesson-1-4', title: '', description: '', content: '', order: 4, duration: 35, difficulty: 'Hard', isCompleted: false }
-    ],
-    isPublic: true
-  },
-  {
-    id: '2',
-    title: 'Linear Algebra Basics',
-    description: 'Master vectors, matrices, and linear transformations through interactive problems.',
-    createdBy: {
-      id: 'user2',
-      email: 'sarah@example.com',
-      displayName: 'Sarah Johnson',
-      createdAt: new Date('2024-02-10'),
-      lastActive: new Date('2024-07-28')
-    },
-    createdAt: new Date('2024-05-20'),
-    updatedAt: new Date('2024-07-15'),
-    level: 'Master',
-    subject: 'Mathematics',
-    tags: ['linear-algebra', 'vectors', 'matrices'],
-    lessons: [
-      { id: 'lesson-2-1', title: '', description: '', content: '', order: 1, duration: 20, difficulty: 'Easy', isCompleted: false },
-      { id: 'lesson-2-2', title: '', description: '', content: '', order: 2, duration: 40, difficulty: 'Medium', isCompleted: false },
-      { id: 'lesson-2-3', title: '', description: '', content: '', order: 3, duration: 45, difficulty: 'Hard', isCompleted: false }
-    ],
-    isPublic: true
-  },
-  {
-    id: '3',
-    title: 'Python Programming Fundamentals',
-    description: 'Build a strong foundation in Python programming with hands-on coding exercises.',
-    createdBy: {
-      id: 'user3',
-      email: 'mike@example.com',
-      displayName: 'Mike Chen',
-      createdAt: new Date('2024-03-05'),
-      lastActive: new Date('2024-07-31')
-    },
-    createdAt: new Date('2024-07-01'),
-    updatedAt: new Date('2024-07-25'),
-    level: 'High school',
-    subject: 'Programming',
-    tags: ['python', 'programming', 'basics'],
-    lessons: [
-      { id: 'lesson-3-1', title: '', description: '', content: '', order: 1, duration: 20, difficulty: 'Easy', isCompleted: false },
-      { id: 'lesson-3-2', title: '', description: '', content: '', order: 2, duration: 30, difficulty: 'Easy', isCompleted: false },
-      { id: 'lesson-3-3', title: '', description: '', content: '', order: 3, duration: 25, difficulty: 'Medium', isCompleted: false },
-      { id: 'lesson-3-4', title: '', description: '', content: '', order: 4, duration: 35, difficulty: 'Medium', isCompleted: false },
-      { id: 'lesson-3-5', title: '', description: '', content: '', order: 5, duration: 20, difficulty: 'Hard', isCompleted: false }
-    ],
-    isPublic: true
-  }
-]
 
 function Courses() {
   const [courses, setCourses] = useState<Course[]>([])
+  const [filteredCourses, setFilteredCourses] = useState<Course[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedSubject, setSelectedSubject] = useState('')
   const [selectedLevel, setSelectedLevel] = useState('')
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const fetchCourses = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      
+      const filters: CourseFilters = {
+        isPublic: true
+      }
+      
+      if (selectedSubject) {
+        filters.subject = selectedSubject
+      }
+      
+      if (selectedLevel) {
+        const levelMap: Record<string, string> = {
+          'highschool': 'High school',
+          'bachelor': 'Bachelor',
+          'master': 'Master'
+        }
+        filters.level = levelMap[selectedLevel]
+      }
+      
+      if (searchTerm) {
+        filters.searchTerm = searchTerm
+      }
+      
+      const fetchedCourses = await coursesService.getAllCourses(filters)
+      setCourses(fetchedCourses)
+      setFilteredCourses(fetchedCourses)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load courses')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   useEffect(() => {
-    setTimeout(() => {
-      setCourses(mockCourses)
-      setLoading(false)
-    }, 500)
-  }, [])
+    const delayedSearch = setTimeout(() => {
+      fetchCourses()
+    }, 300)
 
-  const filteredCourses = courses.filter(course => {
-    const matchesSearch = searchTerm === '' || 
-                         course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         course.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         course.createdBy.displayName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         course.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))
-    
-    const matchesSubject = selectedSubject === '' || course.subject === selectedSubject
-    
-    const matchesLevel = selectedLevel === '' || 
-                        (selectedLevel === 'highschool' && course.level === 'High school') ||
-                        (selectedLevel === 'bachelor' && course.level === 'Bachelor') ||
-                        (selectedLevel === 'master' && course.level === 'Master')
-    
-    return matchesSearch && matchesSubject && matchesLevel
-  })
+    return () => clearTimeout(delayedSearch)
+  }, [searchTerm, selectedSubject, selectedLevel])
+
 
   const subjects = [...new Set(courses.map(course => course.subject))]
 
@@ -130,9 +81,24 @@ function Courses() {
       <Container className="my-4">
         <div className="text-center">
           <div className="spinner-border" role="status">
-            <span className="visually-hidden">Loading...</span>
+            <span className="visually-hidden">Loading courses...</span>
           </div>
+          <p className="mt-2 text-muted">Loading courses...</p>
         </div>
+      </Container>
+    )
+  }
+
+  if (error) {
+    return (
+      <Container className="my-4">
+        <Alert variant="danger">
+          <Alert.Heading>Error Loading Courses</Alert.Heading>
+          <p>{error}</p>
+          <Button variant="outline-danger" onClick={fetchCourses}>
+            Try Again
+          </Button>
+        </Alert>
       </Container>
     )
   }
@@ -202,10 +168,7 @@ function Courses() {
                         {course.description}
                       </Card.Text>
 
-                      <div className="mb-3 d-flex justify-content-between">
-                        <small className="text-muted">
-                          {course.lessons.length} lessons
-                        </small>
+                      <div className="mb-3 d-flex justify-content-end">
                         <small className="text-muted">
                           {course.createdBy.displayName}
                         </small>
