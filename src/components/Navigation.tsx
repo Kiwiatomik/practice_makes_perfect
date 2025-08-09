@@ -52,11 +52,12 @@ const Navigation = () => {
         <Navbar.Collapse id="basic-navbar-nav">
           <Nav className="ms-auto">
             <NavDropdown title="Learn" id="learn-dropdown" className="btn btn-primary">
-              <NavDropdown.Item as={Link} to="/dashboard">Dashboard</NavDropdown.Item>
-              <NavDropdown.Item as={Link} to="/courses">All Courses</NavDropdown.Item>
-              <NavDropdown.Item as={Link} to="/lesson">Lesson</NavDropdown.Item>
+              <NavDropdown.Item as={Link} to="/courses">Browse Courses</NavDropdown.Item>
               {currentUser && (
-                <NavDropdown.Item as={Link} to="/account">Account</NavDropdown.Item>
+                <>
+                  <NavDropdown.Item as={Link} to="/dashboard">Dashboard</NavDropdown.Item>
+                  <NavDropdown.Item as={Link} to="/account">Account</NavDropdown.Item>
+                </>
               )}
               <NavDropdown.Divider />
               {currentUser ? (

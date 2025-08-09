@@ -145,7 +145,7 @@ function Courses() {
           </Row>
 
           {filteredCourses.length === 0 ? (
-            <div className="text-center text-muted my-5">
+            <div className="text-center my-5">
               <h4>No courses found</h4>
               <p>Try adjusting your search criteria or check back later for new content.</p>
             </div>

@@ -146,7 +146,7 @@ function Lesson() {
             </div>
           </div>
 
-          <div className="mt-4 mb-5 d-flex gap-3">
+          <div className="mt-4 mb-2 d-flex gap-3">
             {firstPrompt && (
               <Button 
                 variant="primary" 
@@ -158,9 +158,9 @@ function Lesson() {
             )}
           </div>
 
-          <div className="mt-5 pt-4 border-top">
+          <div> 
             <Link to={`/course/${lesson.courseId}`} className="text-decoration-none">
-              ← Back to Course
+              Back to Course
             </Link>
           </div>
         </Col>

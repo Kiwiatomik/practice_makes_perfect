@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import Modal from 'react-bootstrap/Modal'
 import Button from 'react-bootstrap/Button'
 import Form from 'react-bootstrap/Form'
@@ -23,9 +23,23 @@ const LoginModal = ({ show, onHide, onSwitchToRegister }: LoginModalProps) => {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [resetEmailSent, setResetEmailSent] = useState(false)
+  const emailInputRef = useRef<HTMLInputElement>(null)
 
   // Apply modal blur effect
   useModalBlurEffect({ show })
+
+  // Focus email input when modal opens
+  useEffect(() => {
+    if (show) {
+      // Delay to allow Bootstrap modal animation to complete
+      const timer = setTimeout(() => {
+        emailInputRef.current?.focus()
+        console.log('Attempting to focus email input', emailInputRef.current)
+      }, 300) // Bootstrap modal transition is usually 300ms
+
+      return () => clearTimeout(timer)
+    }
+  }, [show])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -213,6 +227,7 @@ const LoginModal = ({ show, onHide, onSwitchToRegister }: LoginModalProps) => {
           <Form.Group className="mb-3">
             <Form.Label>Email address</Form.Label>
             <Form.Control
+              ref={emailInputRef}
               type="email"
               name="email"
               value={formData.email}
@@ -220,7 +235,6 @@ const LoginModal = ({ show, onHide, onSwitchToRegister }: LoginModalProps) => {
               placeholder="Enter your email"
               required
               disabled={loading}
-              autoFocus
             />
           </Form.Group>
 
