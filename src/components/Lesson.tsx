@@ -11,6 +11,7 @@ import Form from 'react-bootstrap/Form'
 import { Link } from 'react-router'
 import { Lesson as LessonType, Prompt } from '../types'
 import { coursesService } from '../services/coursesService'
+import { deepseekService } from '../services/deepseekService'
 
 function Lesson() {
   const { id } = useParams<{ id: string }>()
@@ -21,6 +22,9 @@ function Lesson() {
   const [userAnswer, setUserAnswer] = useState('')
   const [firstPrompt, setFirstPrompt] = useState<Prompt | null>(null)
   const [promptLoading, setPromptLoading] = useState(false)
+  const [interpretedPrompt, setInterpretedPrompt] = useState<string | null>(null)
+  const [interpretationLoading, setInterpretationLoading] = useState(false)
+  const [interpretationError, setInterpretationError] = useState<string | null>(null)
 
   const fetchLesson = async () => {
     if (!id) {
@@ -66,6 +70,23 @@ function Lesson() {
       fetchFirstPrompt();
     }
   }, [lesson?.courseId, id])
+
+  const solveQuestionWithAI = async () => {
+    if (!firstPrompt?.text) return;
+
+    try {
+      setInterpretationLoading(true);
+      setInterpretationError(null);
+      
+      const solution = await deepseekService.solveQuestionWithAI(firstPrompt.text);
+      setInterpretedPrompt(solution);
+    } catch (error) {
+      console.error('Error solving question with AI:', error);
+      setInterpretationError(error instanceof Error ? error.message : 'Failed to solve question');
+    } finally {
+      setInterpretationLoading(false);
+    }
+  };
 
   const getDifficultyColor = (difficulty: string) => {
     if (difficulty === 'Easy') return 'success'
@@ -178,10 +199,53 @@ function Lesson() {
         </Modal.Header>
         <Modal.Body>
           <div className="mb-4">
-            <div style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6' }}>
+            <h6 className="fw-bold mb-2">Question:</h6>
+            <div style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6' }} className="p-3 bg-light rounded">
               {firstPrompt?.text}
             </div>
           </div>
+
+          <div className="mb-4">
+            <div className="d-flex align-items-center justify-content-between mb-2">
+              <h6 className="fw-bold mb-0">AI Solution:</h6>
+              <Button 
+                variant="outline-primary" 
+                size="sm"
+                onClick={solveQuestionWithAI}
+                disabled={interpretationLoading || !firstPrompt?.text}
+              >
+                {interpretationLoading ? (
+                  <>
+                    <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                    Solving...
+                  </>
+                ) : (
+                  interpretedPrompt ? 'Get New Solution' : 'Get AI Solution'
+                )}
+              </Button>
+            </div>
+            
+            {interpretationError && (
+              <Alert variant="warning" className="py-2">
+                <small>{interpretationError}</small>
+              </Alert>
+            )}
+            
+            {interpretedPrompt && (
+              <div className="p-3 bg-info bg-opacity-10 rounded border-start border-info border-4">
+                <div style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6' }}>
+                  {interpretedPrompt}
+                </div>
+              </div>
+            )}
+            
+            {!interpretedPrompt && !interpretationError && !interpretationLoading && (
+              <div className="text-muted text-center py-3">
+                <small>Click "Get AI Solution" to receive a detailed solution for this question</small>
+              </div>
+            )}
+          </div>
+
           <Form>
             <Form.Group className="mb-3">
               <Form.Label>Your Answer</Form.Label>
