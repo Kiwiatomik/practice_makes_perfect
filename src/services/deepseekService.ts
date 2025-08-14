@@ -1,5 +1,5 @@
 import OpenAI from 'openai';
-import { deepseekMessages } from '../config/deepseekMessages';
+import { deepseekMessages, deepseekMessagePracticeAgain, deepseekMessageNextLevel } from '../config/deepseekMessages';
 
 class DeepseekService {
   private client: OpenAI;
@@ -33,7 +33,7 @@ class DeepseekService {
           }
         ],
         stream: false,
-        temperature: 0.7,
+        temperature: 0,
         max_tokens: 500
       });
 
@@ -52,6 +52,80 @@ class DeepseekService {
       }
       
       throw new Error('Failed to solve question: Unknown error');
+    }
+  }
+
+  async generatePracticeQuestion(originalPromptText: string): Promise<string> {
+    try {
+      const completion = await this.client.chat.completions.create({
+        model: 'deepseek-chat',
+        messages: [
+          {
+            role: 'system',
+            content: deepseekMessagePracticeAgain.systemMessage
+          },
+          {
+            role: 'user',
+            content: deepseekMessagePracticeAgain.userMessageTemplate.replace('{promptText}', originalPromptText)
+          }
+        ],
+        stream: false,
+        temperature: 0.8,
+        max_tokens: 800
+      });
+
+      const generatedContent = completion.choices[0]?.message?.content;
+      
+      if (!generatedContent) {
+        throw new Error('No practice question received from Deepseek');
+      }
+
+      return generatedContent;
+    } catch (error) {
+      console.error('Error generating practice question with Deepseek:', error);
+      
+      if (error instanceof Error) {
+        throw new Error(`Failed to generate practice question: ${error.message}`);
+      }
+      
+      throw new Error('Failed to generate practice question: Unknown error');
+    }
+  }
+
+  async generateNextLevelQuestion(originalPromptText: string): Promise<string> {
+    try {
+      const completion = await this.client.chat.completions.create({
+        model: 'deepseek-chat',
+        messages: [
+          {
+            role: 'system',
+            content: deepseekMessageNextLevel.systemMessage
+          },
+          {
+            role: 'user',
+            content: deepseekMessageNextLevel.userMessageTemplate.replace('{promptText}', originalPromptText)
+          }
+        ],
+        stream: false,
+        temperature: 0.8,
+        max_tokens: 800
+      });
+
+      const generatedContent = completion.choices[0]?.message?.content;
+      
+      if (!generatedContent) {
+        throw new Error('No next level question received from Deepseek');
+      }
+
+      return generatedContent;
+    } catch (error) {
+      console.error('Error generating next level question with Deepseek:', error);
+      
+      if (error instanceof Error) {
+        throw new Error(`Failed to generate next level question: ${error.message}`);
+      }
+      
+      throw new Error('Failed to generate next level question: Unknown error');
     }
   }
 }

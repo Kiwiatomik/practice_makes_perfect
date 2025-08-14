@@ -91,7 +91,11 @@ const convertDocumentToPrompt = (doc: QueryDocumentSnapshot<DocumentData>): Prom
     isGoodEnough: data.isGoodEnough || false,
     difficulty: data.difficulty || 'Easy',
     order: data.order || 0,
-    text: data.text || ''
+    text: data.text || '',
+    answer: data.answer || undefined,
+    workings: data.workings || undefined,
+    subject: data.subject || undefined,
+    level: data.level || undefined
   };
 };
 

@@ -32,6 +32,11 @@ export interface User {
   lastActive: Date;
 }
 
+export interface Working {
+  format: 'title' | 'paragraph';
+  content: string;
+}
+
 export interface Prompt {
   id: string;
   checkedByHuman: boolean;
@@ -40,6 +45,10 @@ export interface Prompt {
   difficulty: 'Easy' | 'Medium' | 'Hard';
   order: number;
   text: string;
+  answer?: string;
+  workings?: Working[];
+  subject?: string;
+  level?: 'Easy' | 'Medium' | 'Hard';
 }
 
 export interface Lesson {

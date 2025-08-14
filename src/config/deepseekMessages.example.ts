@@ -60,7 +60,6 @@ Here is an input example: "Find the derivative of $f\left( x \right) = 3x^{2} + 
 
 userMessageTemplate: 'Solve the following problem: "{promptText}"'
 };
-
 // Instructions:
 // 1. Copy this file to deepseekMessages.ts
 // 2. Customize the messages according to your needs
