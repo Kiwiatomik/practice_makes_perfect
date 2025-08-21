@@ -1,0 +1,65 @@
+import { useState, useEffect } from 'react'
+import { Lesson as LessonType, Prompt } from '../types'
+import { coursesService } from '../services/coursesService'
+
+export function useLesson(lessonId: string | undefined) {
+  const [lesson, setLesson] = useState<LessonType | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [firstPrompt, setFirstPrompt] = useState<Prompt | null>(null)
+  const [promptLoading, setPromptLoading] = useState(false)
+
+  const fetchLesson = async () => {
+    if (!lessonId) {
+      setError('Lesson ID is required')
+      setLoading(false)
+      return
+    }
+
+    try {
+      setLoading(true)
+      setError(null)
+      
+      const fetchedLesson = await coursesService.getLessonById(lessonId)
+      setLesson(fetchedLesson)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load lesson')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const fetchFirstPrompt = async () => {
+    if (!lesson?.courseId || !lessonId) return
+    
+    try {
+      setPromptLoading(true)
+      const prompt = await coursesService.getFirstPromptByLessonId(lesson.courseId, lessonId)
+      setFirstPrompt(prompt)
+    } catch (error) {
+      console.error('Error fetching prompt:', error)
+      // Don't show error for prompts - just means no prompts exist
+    } finally {
+      setPromptLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchLesson()
+  }, [lessonId])
+
+  useEffect(() => {
+    if (lesson?.courseId) {
+      fetchFirstPrompt()
+    }
+  }, [lesson?.courseId, lessonId])
+
+  return {
+    lesson,
+    loading,
+    error,
+    firstPrompt,
+    promptLoading,
+    refetch: fetchLesson
+  }
+}

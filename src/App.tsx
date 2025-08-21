@@ -6,6 +6,7 @@ import Lesson from './components/Lesson'
 import Courses from './components/Courses'
 import CoursePage from './components/CoursePage'
 import Account from './components/Account'
+import AdminQuestionPopulator from './components/AdminQuestionPopulator'
 import ProtectedRoute from './components/ProtectedRoute'
 import './styles/custom-bootstrap.scss'
 import './App.css'
@@ -38,6 +39,7 @@ function App() {
             <Account />
           </ProtectedRoute>
         } />
+        <Route path="/admin/questions" element={<AdminQuestionPopulator />} />
       </Routes>
     </Router>
   )
