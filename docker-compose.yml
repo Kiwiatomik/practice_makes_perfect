@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      target: development
+    container_name: practice-makes-perfect-dev
+    ports:
+      - "5173:5173"
+    environment:
+      - NODE_ENV=development
+    env_file:
+      - .env
+    stdin_open: true
+    tty: true
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5173"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Optional: Firebase emulator for development
+  firebase-emulator:
+    image: node:20-alpine
+    container_name: practice-makes-perfect-firebase
+    working_dir: /app
+    ports:
+      - "9099:9099"  # Auth emulator
+      - "8080:8080"  # Firestore emulator
+      - "4000:4000"  # Firebase UI
+    volumes:
+      - .:/app
+      - /app/node_modules
+    command: sh -c "npm install -g firebase-tools && firebase emulators:start --only auth,firestore"
+    environment:
+      - FIREBASE_TOKEN=${FIREBASE_TOKEN}
+    profiles:
+      - emulator

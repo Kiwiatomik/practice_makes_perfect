@@ -1,6 +1,6 @@
 # Practice Makes Perfect
 
-[insert url] is learning platform, specialised in applied mathematics, that creates adaptive content which grows with the user, built with React and Firebase. 
+[insert url] is learning platform, specialised in applied mathematics, that creates adaptive content which grows with the user, built with React and Firebase. This Git project aims to store its code base and eventually replicate it 
 The **"Next Level" System** provides a progressive learning experience.
 
 ## Features
@@ -75,3 +75,6 @@ Access the admin interface at `/admin/questions` to:
 - Manage lesson content
 - Bulk import mathematical and programming exercises
 
+## Project Management
+
+Task progress was monitored using GitHub's kaban boards

@@ -7,7 +7,16 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "docker:dev": "docker compose build && docker compose up",
+    "docker:dev:detached": "docker compose build && docker compose up -d",
+    "docker:dev:stop": "docker compose down",
+    "docker:dev:logs": "docker compose logs -f app",
+    "docker:prod": "docker compose -f docker-compose.prod.yml build && docker compose -f docker-compose.prod.yml up",
+    "docker:prod:detached": "docker compose -f docker-compose.prod.yml build && docker compose -f docker-compose.prod.yml up -d",
+    "docker:prod:stop": "docker compose -f docker-compose.prod.yml down",
+    "docker:build": "docker build -t practice-makes-perfect .",
+    "docker:clean": "docker system prune -f && docker volume prune -f"
   },
   "dependencies": {
     "bootstrap": "^5.3.7",

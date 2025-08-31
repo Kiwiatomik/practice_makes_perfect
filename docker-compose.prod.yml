@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      target: production
+    container_name: practice-makes-perfect-prod
+    ports:
+      - "80:80"
+    environment:
+      - NODE_ENV=production
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Optional: Reverse proxy with SSL
+  nginx-proxy:
+    image: nginxproxy/nginx-proxy:alpine
+    container_name: nginx-proxy
+    ports:
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+      - certs:/etc/nginx/certs:ro
+      - vhost:/etc/nginx/vhost.d
+      - html:/usr/share/nginx/html
+    restart: unless-stopped
+    profiles:
+      - proxy
+
+  # Optional: SSL certificate management
+  acme-companion:
+    image: nginxproxy/acme-companion:latest
+    container_name: acme-companion
+    environment:
+      - DEFAULT_EMAIL=your-email@example.com
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - certs:/etc/nginx/certs:rw
+      - vhost:/etc/nginx/vhost.d
+      - html:/usr/share/nginx/html
+      - acme:/etc/acme.sh
+    restart: unless-stopped
+    profiles:
+      - proxy
+
+volumes:
+  certs:
+  vhost:
+  html:
+  acme:
