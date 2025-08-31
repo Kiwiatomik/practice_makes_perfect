@@ -7,11 +7,14 @@ import Button from 'react-bootstrap/Button'
 import Form from 'react-bootstrap/Form'
 import Alert from 'react-bootstrap/Alert'
 import Spinner from 'react-bootstrap/Spinner'
-import { updateEmail, updatePassword, reauthenticateWithCredential, EmailAuthProvider } from 'firebase/auth'
+import { updateEmail, updatePassword, reauthenticateWithCredential, EmailAuthProvider, sendEmailVerification, deleteUser } from 'firebase/auth'
 import { useAuth } from '../contexts/AuthContext'
+import { useTheme } from '../contexts/ThemeContext'
+import { ThemeToggle } from '../components/shared/ThemeToggle'
 
 const Account = () => {
   const { currentUser } = useAuth()
+  const { theme } = useTheme()
   const [emailFormData, setEmailFormData] = useState({
     newEmail: '',
     currentPassword: ''
@@ -23,18 +26,26 @@ const Account = () => {
   })
   const [loading, setLoading] = useState({
     email: false,
-    password: false
+    password: false,
+    verification: false,
+    delete: false
   })
   const [error, setError] = useState({
     email: '',
-    password: ''
+    password: '',
+    verification: '',
+    delete: ''
   })
   const [success, setSuccess] = useState({
     email: '',
-    password: ''
+    password: '',
+    verification: '',
+    delete: ''
   })
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deletePassword, setDeletePassword] = useState('')
 
-  const clearMessages = (type: 'email' | 'password') => {
+  const clearMessages = (type: 'email' | 'password' | 'verification' | 'delete') => {
     setError(prev => ({ ...prev, [type]: '' }))
     setSuccess(prev => ({ ...prev, [type]: '' }))
   }
@@ -176,6 +187,83 @@ const Account = () => {
     }
   }
 
+  const handleSendVerification = async () => {
+    if (!currentUser) return
+
+    setLoading(prev => ({ ...prev, verification: true }))
+    clearMessages('verification')
+
+    try {
+      await sendEmailVerification(currentUser)
+      setSuccess(prev => ({ ...prev, verification: 'Verification email sent! Please check your inbox.' }))
+    } catch (err) {
+      let errorMessage = 'Failed to send verification email'
+      
+      if (err instanceof Error) {
+        switch (err.code) {
+          case 'auth/too-many-requests':
+            errorMessage = 'Too many requests. Please wait before requesting another verification email.'
+            break
+          default:
+            errorMessage = err.message.includes('Firebase:') 
+              ? err.message.replace('Firebase: Error ', '').replace(/[()]/g, '')
+              : err.message
+        }
+      }
+      
+      setError(prev => ({ ...prev, verification: errorMessage }))
+    } finally {
+      setLoading(prev => ({ ...prev, verification: false }))
+    }
+  }
+
+  const handleDeleteAccount = async () => {
+    if (!currentUser || !currentUser.email) return
+
+    setLoading(prev => ({ ...prev, delete: true }))
+    clearMessages('delete')
+
+    try {
+      if (!deletePassword) {
+        throw new Error('Please enter your current password')
+      }
+
+      // Reauthenticate user
+      const credential = EmailAuthProvider.credential(
+        currentUser.email,
+        deletePassword
+      )
+      await reauthenticateWithCredential(currentUser, credential)
+
+      // Delete user
+      await deleteUser(currentUser)
+
+      // User will be automatically logged out and redirected
+      
+    } catch (err) {
+      let errorMessage = 'Failed to delete account'
+      
+      if (err instanceof Error) {
+        switch (err.code || err.message) {
+          case 'auth/wrong-password':
+            errorMessage = 'Current password is incorrect'
+            break
+          case 'auth/requires-recent-login':
+            errorMessage = 'Please log out and log back in, then try again'
+            break
+          default:
+            errorMessage = err.message.includes('Firebase:') 
+              ? err.message.replace('Firebase: Error ', '').replace(/[()]/g, '')
+              : err.message
+        }
+      }
+      
+      setError(prev => ({ ...prev, delete: errorMessage }))
+    } finally {
+      setLoading(prev => ({ ...prev, delete: false }))
+    }
+  }
+
   if (!currentUser) {
     return (
       <Container className="py-5">
@@ -194,17 +282,73 @@ const Account = () => {
     <Container className="py-5">
         <Row className="justify-content-center">
           <Col md={8} lg={6}>
-            <h2 className="text-center mb-4">Account Settings</h2>
+            <div className="d-flex justify-content-between align-items-center mb-4">
+              <h2 className="mb-0">Account Settings</h2>
+              <ThemeToggle />
+            </div>
           
           {/* Current Account Info */}
-          <Card className="mb-4" data-bs-theme="dark">
+          <Card className="mb-4" data-bs-theme={theme}>
             <Card.Header>
               <h5 className="mb-0">Account Information</h5>
             </Card.Header>
             <Card.Body>
               <p><strong>Email:</strong> {currentUser.email}</p>
+              <p>
+                <strong>Email Verified:</strong>{' '}
+                {currentUser.emailVerified ? (
+                  <span className="text-success">✓ Verified</span>
+                ) : (
+                  <>
+                    <span className="text-warning">✗ Not Verified</span>
+                    <Button
+                      variant="link"
+                      size="sm"
+                      className="p-0 ms-2"
+                      disabled={loading.verification}
+                      onClick={handleSendVerification}
+                    >
+                      {loading.verification ? (
+                        <>
+                          <Spinner size="sm" className="me-1" />
+                          Sending...
+                        </>
+                      ) : (
+                        'Send Verification Email'
+                      )}
+                    </Button>
+                  </>
+                )}
+              </p>
+              <p>
+                <strong>Account Created:</strong>{' '}
+                {currentUser.metadata.creationTime 
+                  ? new Date(currentUser.metadata.creationTime).toLocaleDateString('en-US', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric'
+                    })
+                  : 'Unknown'
+                }
+              </p>
             </Card.Body>
           </Card>
+
+          {/* Verification Messages */}
+          {(error.verification || success.verification) && (
+            <>
+              {error.verification && (
+                <Alert variant="danger" className="mb-3" dismissible onClose={() => clearMessages('verification')}>
+                  {error.verification}
+                </Alert>
+              )}
+              {success.verification && (
+                <Alert variant="success" className="mb-3" dismissible onClose={() => clearMessages('verification')}>
+                  {success.verification}
+                </Alert>
+              )}
+            </>
+          )}
 
           {/* Email Messages */}
           {(error.email || success.email) && (
@@ -223,7 +367,7 @@ const Account = () => {
           )}
 
           {/* Change Email */}
-          <Card className="mb-4" data-bs-theme="dark">
+          <Card className="mb-4" data-bs-theme={theme}>
             <Card.Header>
               <h5 className="mb-0">Change Email Address</h5>
             </Card.Header>
@@ -288,7 +432,7 @@ const Account = () => {
           )}
 
           {/* Change Password */}
-          <Card className="mb-4" data-bs-theme="dark">
+          <Card className="mb-4" data-bs-theme={theme}>
             <Card.Header>
               <h5 className="mb-0">Change Password</h5>
             </Card.Header>
@@ -348,6 +492,91 @@ const Account = () => {
                   )}
                 </Button>
               </Form>
+            </Card.Body>
+          </Card>
+
+          {/* Delete Messages */}
+          {(error.delete || success.delete) && (
+            <>
+              {error.delete && (
+                <Alert variant="danger" className="mb-3" dismissible onClose={() => clearMessages('delete')}>
+                  {error.delete}
+                </Alert>
+              )}
+              {success.delete && (
+                <Alert variant="success" className="mb-3" dismissible onClose={() => clearMessages('delete')}>
+                  {success.delete}
+                </Alert>
+              )}
+            </>
+          )}
+
+          {/* Delete Account */}
+          <Card className="mb-4 border-danger" data-bs-theme={theme}>
+            <Card.Header className="bg-danger">
+              <h5 className="mb-0 text-white">Danger Zone</h5>
+            </Card.Header>
+            <Card.Body>
+              <p className="text-muted mb-3">
+                Once you delete your account, there is no going back. Please be certain.
+              </p>
+              
+              {!showDeleteConfirm ? (
+                <Button
+                  variant="outline-danger"
+                  onClick={() => setShowDeleteConfirm(true)}
+                >
+                  Delete Account
+                </Button>
+              ) : (
+                <div>
+                  <Alert variant="danger" className="mb-3">
+                    <Alert.Heading>Are you absolutely sure?</Alert.Heading>
+                    <p className="mb-3">
+                      This action cannot be undone. This will permanently delete your account and remove all your data from our servers.
+                    </p>
+                    
+                    <Form.Group className="mb-3">
+                      <Form.Label>Enter your current password to confirm:</Form.Label>
+                      <Form.Control
+                        type="password"
+                        value={deletePassword}
+                        onChange={(e) => setDeletePassword(e.target.value)}
+                        placeholder="Enter your current password"
+                        disabled={loading.delete}
+                      />
+                    </Form.Group>
+                    
+                    <div className="d-flex gap-2">
+                      <Button
+                        variant="danger"
+                        onClick={handleDeleteAccount}
+                        disabled={loading.delete || !deletePassword}
+                      >
+                        {loading.delete ? (
+                          <>
+                            <Spinner size="sm" className="me-2" />
+                            Deleting Account...
+                          </>
+                        ) : (
+                          'Yes, Delete My Account'
+                        )}
+                      </Button>
+                      <Button
+                        variant="outline-secondary"
+                        onClick={() => {
+                          setShowDeleteConfirm(false)
+                          setDeletePassword('')
+                          clearMessages('delete')
+                        }}
+                        disabled={loading.delete}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </Alert>
+                </div>
+              )}
             </Card.Body>
           </Card>
         </Col>

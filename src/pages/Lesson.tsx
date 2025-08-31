@@ -1,8 +1,8 @@
 import { useParams } from 'react-router'
+import { useCallback } from 'react'
 import Container from 'react-bootstrap/Container'
 import Row from 'react-bootstrap/Row'
 import Col from 'react-bootstrap/Col'
-import Alert from 'react-bootstrap/Alert'
 import Button from 'react-bootstrap/Button'
 import Badge from 'react-bootstrap/Badge'
 import { Link } from 'react-router'
@@ -11,7 +11,11 @@ import { usePrompt } from '../hooks/usePrompt'
 import { useModal } from '../hooks/useModal'
 import { useAuth } from '../contexts/AuthContext'
 import { coursesService } from '../services/coursesService'
-import QuestionModal from './QuestionModal'
+import QuestionModal from '../components/QuestionModal'
+import LoadingState from '../components/shared/LoadingState'
+import ErrorState from '../components/shared/ErrorState'
+import { getDifficultyColor } from '../utils/badgeColors'
+import { sanitizeLessonError } from '../utils/errorSanitization'
 
 function Lesson() {
   const { id } = useParams<{ id: string }>()
@@ -22,48 +26,35 @@ function Lesson() {
   const { promptState, solveQuestionWithAI, generateQuestion, resetToOriginal } = usePrompt(firstPrompt)
   const { modalState, showModal, hideModal, setUserAnswer, submitAnswer, resetForNewQuestion } = useModal()
 
-  // Debug logging
-  console.log('Lesson - firstPrompt:', firstPrompt)
-  console.log('Lesson - promptState.answerType:', promptState.answerType)
-  console.log('Lesson - passing to QuestionModal:', promptState.answerType || undefined)
 
 
   // Helper function for generating questions with modal state reset
-  const handleGenerateQuestion = async (type: 'practice' | 'nextLevel') => {
+  const handleGenerateQuestion = useCallback(async (type: 'practice' | 'nextLevel') => {
     const success = await generateQuestion(type, lesson?.courseId, id)
     if (success) {
       resetForNewQuestion()
     }
-  }
+  }, [generateQuestion, lesson?.courseId, id, resetForNewQuestion])
 
   // Handle modal close - just hide, don't reset data
-  const handleModalClose = () => {
+  const handleModalClose = useCallback(() => {
     hideModal()
     // Don't reset to original or clear modal data - preserve user's progress
-  }
+  }, [hideModal])
 
   // Handle starting fresh with the original question
-  const handleStartFresh = () => {
+  const handleStartFresh = useCallback(() => {
     resetToOriginal()
     resetForNewQuestion()
     showModal()
-  }
+  }, [resetToOriginal, resetForNewQuestion, showModal])
 
   // Handle answer submission
-  const handleSubmitAnswer = async () => {
-    console.log('=== handleSubmitAnswer called ===')
-    console.log('User:', currentUser?.uid)
-    console.log('FirstPrompt:', firstPrompt?.id)
-    console.log('Lesson courseId:', lesson?.courseId)
-    console.log('Lesson id:', id)
-    console.log('Modal state:', modalState)
-    console.log('Prompt state:', promptState)
-    
+  const handleSubmitAnswer = useCallback(async () => {
     submitAnswer(promptState.answer, promptState.answerType)
     
     // Record the answer in database
     if (currentUser && firstPrompt && lesson?.courseId && id) {
-      console.log('All conditions met - attempting to record answer')
       try {
         const answerData = {
           abstractionLevel: promptState.abstractionLevel || firstPrompt.abstractionLevel || 0,
@@ -71,96 +62,51 @@ function Lesson() {
           correctAnswer: promptState.answer,
           isCorrect: modalState.isCorrect
         }
-        console.log('Answer data to record:', answerData)
         
-        const answerId = await coursesService.recordUserAnswer(
+        await coursesService.recordUserAnswer(
           currentUser.uid,
           lesson.courseId,
           id,
           firstPrompt.id,
           answerData
         )
-        console.log('✅ Answer recorded successfully with ID:', answerId)
       } catch (error) {
-        console.error('❌ Failed to record answer:', error)
+        console.error('Failed to record answer:', error)
         // Don't block user experience if recording fails
       }
-    } else {
-      console.log('❌ Cannot record answer - missing required data:')
-      console.log('- User:', !!currentUser)
-      console.log('- FirstPrompt:', !!firstPrompt)
-      console.log('- Lesson courseId:', !!lesson?.courseId)
-      console.log('- Lesson id:', !!id)
     }
     
     // Automatically load solution after submitting answer
     solveQuestionWithAI()
-    console.log('User answer:', modalState.userAnswer)
-    if (promptState.answer) {
-      console.log('Correct answer:', promptState.answer)
-      console.log('Answer comparison - User:', modalState.userAnswer, 'Correct:', promptState.answer)
-    } else {
-      console.log('No correct answer available for comparison')
-    }
-  }
+  }, [submitAnswer, promptState.answer, promptState.answerType, promptState.abstractionLevel, currentUser, firstPrompt, lesson?.courseId, id, modalState.userAnswer, modalState.isCorrect, solveQuestionWithAI])
 
 
 
-  const getDifficultyColor = (difficulty: string) => {
-    if (difficulty === 'Easy') return 'success'
-    if (difficulty === 'Medium') return 'warning'
-    return 'danger'
-  }
 
   if (loading) {
-    return (
-      <Container className="my-4">
-        <div className="text-center">
-          <div className="spinner-border" role="status">
-            <span className="visually-hidden">Loading lesson...</span>
-          </div>
-          <p className="mt-2 text-muted">Loading lesson...</p>
-        </div>
-      </Container>
-    )
+    return <LoadingState message="Loading lesson..." />
   }
 
   if (error) {
     return (
-      <Container className="my-4">
-        <Alert variant="danger">
-          <Alert.Heading>Error Loading Lesson</Alert.Heading>
-          <p>{error}</p>
-          <div>
-            <Button variant="outline-danger" onClick={refetch} className="me-2">
-              Try Again
-            </Button>
-            {lesson?.courseId ? (
-              <Link to={`/course/${lesson.courseId}`} className="btn btn-secondary">
-                Back to Course
-              </Link>
-            ) : (
-              <Link to="/courses" className="btn btn-secondary">
-                Back to Courses
-              </Link>
-            )}
-          </div>
-        </Alert>
-      </Container>
+      <ErrorState 
+        title="Error Loading Lesson" 
+        message={sanitizeLessonError(error)} 
+        onRetry={refetch} 
+        backLink={lesson?.courseId ? `/course/${lesson.courseId}` : '/courses'} 
+        backText={lesson?.courseId ? 'Back to Course' : 'Back to Courses'} 
+      />
     )
   }
 
   if (!lesson) {
     return (
-      <Container className="my-4">
-        <div className="text-center">
-          <h2>Lesson not found</h2>
-          <p>The lesson you're looking for doesn't exist.</p>
-          <Link to="/courses" className="btn btn-primary">
-            Back to Courses
-          </Link>
-        </div>
-      </Container>
+      <ErrorState 
+        title="Lesson not found" 
+        message="The lesson you're looking for doesn't exist." 
+        backLink="/courses" 
+        backText="Back to Courses" 
+      />
     )
   }
 
@@ -168,40 +114,53 @@ function Lesson() {
     <Container className="my-4">
       <Row>
         <Col>
-          <div className="mb-4">
+          <header className="mb-4">
             <div className="d-flex align-items-center mb-3">
-              <h1 className="mb-0 me-3">{lesson.title}</h1>
-              <Badge bg={getDifficultyColor(lesson.difficulty)}>
+              <h1 className="mb-0 me-3" id="lesson-title">{lesson.title}</h1>
+              <Badge 
+                bg={getDifficultyColor(lesson.difficulty)}
+                aria-label={`Difficulty level: ${lesson.difficulty}`}
+              >
                 {lesson.difficulty}
               </Badge>
             </div>
-          </div>
+          </header>
 
-          <div className="lesson-content">
-            <div className="mb-4">
-              <div style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6' }}>
+          <main className="lesson-content">
+            <section className="mb-4" aria-labelledby="lesson-title">
+              <div 
+                style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6' }}
+                id="lesson-content"
+                role="article"
+              >
                 {lesson.content}
               </div>
-            </div>
-          </div>
+            </section>
+          </main>
 
-          <div className="mt-4 mb-2 d-flex gap-3">
+          <div className="mt-4 mb-2 d-flex gap-3" role="toolbar" aria-label="Lesson actions">
             {firstPrompt && (
               <Button 
                 variant="primary" 
                 onClick={showModal}
                 disabled={promptLoading}
+                aria-label={`Open question for ${lesson.title}`}
+                aria-describedby="lesson-content"
               >
                 {promptLoading ? 'Loading...' : 'Question'}
               </Button>
             )}
           </div>
 
-          <div> 
-            <Link to={`/course/${lesson.courseId}`} className="text-decoration-none">
+          <nav aria-label="Navigation">
+            <Link 
+              to={`/course/${lesson.courseId}`} 
+              className="text-decoration-none"
+              aria-label="Return to course page"
+            >
               Back to Course
             </Link>
-          </div>
+          </nav>
         </Col>
       </Row>
 
@@ -224,6 +183,7 @@ function Lesson() {
         solutionError={promptState.solutionError}
         solution={promptState.solution}
         workings={promptState.workings}
+        aria-labelledby="lesson-title"
       />
     </Container>
   )

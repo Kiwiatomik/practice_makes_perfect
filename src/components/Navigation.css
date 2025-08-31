@@ -9,15 +9,30 @@
   rotate: -20deg;
 }
 
-/* Target the specific dropdown toggle button */
-.navbar .dropdown-toggle {
+/* Theme-aware dropdown toggle button styling */
+.navbar-dark .dropdown-toggle {
   color: #000000 !important;
 }
 
-/* Also target when it's focused/active */
-.navbar .dropdown-toggle:hover,
-.navbar .dropdown-toggle:focus,
-.navbar .dropdown-toggle:active,
-.navbar .dropdown-toggle.show {
+.navbar-dark .dropdown-toggle:hover,
+.navbar-dark .dropdown-toggle:focus,
+.navbar-dark .dropdown-toggle:active,
+.navbar-dark .dropdown-toggle.show {
   color: #000000 !important;
+}
+
+.navbar-light .dropdown-toggle {
+  color: #000000 !important;
+}
+
+.navbar-light .dropdown-toggle:hover,
+.navbar-light .dropdown-toggle:focus,
+.navbar-light .dropdown-toggle:active,
+.navbar-light .dropdown-toggle.show {
+  color: #000000 !important;
+}
+
+/* Ensure navbar brand text is visible in both themes */
+.navbar-light .navbar-brand {
+  color: var(--text-color) !important;
 }

@@ -3,9 +3,12 @@ import { useLocation } from 'react-router'
 import Container from 'react-bootstrap/Container'
 import Alert from 'react-bootstrap/Alert'
 import logoDark from '../assets/logo_dark.svg'
+import logoLight from '../assets/logo_light.svg'
+import { useTheme } from '../contexts/ThemeContext'
 
 function Home() {
   const location = useLocation()
+  const { theme } = useTheme()
   const [message, setMessage] = useState('')
 
   useEffect(() => {
@@ -48,7 +51,7 @@ function Home() {
       
       <Container fluid className="App">
         <div className="text-center my-5">
-          <img id="home-logo" src={logoDark} alt="Practice Makes Perfect Logo" className="mb-4" />
+          <img id="home-logo" src={theme === 'light' ? logoLight : logoDark} alt="Practice Makes Perfect Logo" className="mb-4" />
         </div>
         <div id="home-title" className="text-center">
           <h1>Lightbulb moments</h1> 

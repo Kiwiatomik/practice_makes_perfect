@@ -3,12 +3,13 @@ import Navbar from 'react-bootstrap/Navbar'
 import Nav from 'react-bootstrap/Nav'
 import NavDropdown from 'react-bootstrap/NavDropdown'
 import Container from 'react-bootstrap/Container'
-import Button from 'react-bootstrap/Button'
 import { Link, useNavigate } from 'react-router'
 import logoDark from '../assets/logo_dark.svg'
+import logoLight from '../assets/logo_light.svg'
 import LoginModal from './LoginModal'
 import RegisterModal from './RegisterModal'
 import { useAuth } from '../contexts/AuthContext'
+import { useTheme } from '../contexts/ThemeContext'
 
 import './Navigation.css'
 
@@ -16,6 +17,7 @@ const Navigation = () => {
   const [showLoginModal, setShowLoginModal] = useState(false)
   const [showRegisterModal, setShowRegisterModal] = useState(false)
   const { currentUser, logout } = useAuth()
+  const { theme } = useTheme()
   const navigate = useNavigate()
 
   const handleLogout = async () => {
@@ -41,10 +43,10 @@ const Navigation = () => {
 
   return (
     <>
-    <Navbar bg="dark" variant="dark" expand="lg">
+    <Navbar bg={theme === 'light' ? 'light' : 'dark'} variant={theme === 'light' ? 'light' : 'dark'} expand="lg">
       <Container className="nav-container">
         <Navbar.Brand as={Link} to="/" className="d-flex align-items-center">
-          <img src={logoDark} alt="Practice Makes Perfect" className="me-2" />
+          <img src={theme === 'light' ? logoLight : logoDark} alt="Practice Makes Perfect" className="me-2" />
           Practice Makes Perfect
         </Navbar.Brand>
         

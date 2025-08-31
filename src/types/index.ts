@@ -1,34 +1,35 @@
 export interface Question {
   id: string;
-  content: string;
   answer: string;
+  content: string;
   difficulty: number;
   subject: string;
   tags: string[];
 }
 
 export interface UserProgress {
-  userId: string;
-  questionId: string;
+  id: string;
   attempts: number;
   correct: boolean;
-  timestamp: Date;
+  questionId: string;
   timeSpent: number;
+  timestamp: Date;
+  userId: string;
 }
 
 export interface LearningPath {
   id: string;
-  name: string;
   description: string;
-  questionIds: string[];
   difficulty: number;
+  name: string;
+  questionIds: string[];
 }
 
 export interface User {
   id: string;
-  email: string;
-  displayName: string;
   createdAt: Date;
+  displayName: string;
+  email: string;
   lastActive: Date;
 }
 
@@ -39,61 +40,60 @@ export interface Working {
 
 export interface Prompt {
   id: string;
-  text: string;
-  workings?: Working[];
+  abstractionLevel: number;  // 0 = original, 1+ = levels of abstraction
   answer?: string;
   answerType?: 'number' | 'equation';
-  level?: string;
-  abstractionLevel: number;  // 0 = original, 1+ = levels of abstraction
-  parentPromptId?: string;
+  checkedByHuman?: boolean;  // Legacy field for backward compatibility
   createdAt: Date | any;  // Can be Firestore Timestamp or Date
   difficulty?: string;
-  // Legacy fields for backward compatibility
-  checkedByHuman?: boolean;
-  isGenerated?: boolean;
-  isGoodEnough?: boolean;
-  order?: number;
-  subject?: string;
+  isGenerated?: boolean;  // Legacy field for backward compatibility
+  isGoodEnough?: boolean;  // Legacy field for backward compatibility
+  level?: string;
+  order?: number;  // Legacy field for backward compatibility
+  parentPromptId?: string;
+  subject?: string;  // Legacy field for backward compatibility
+  text: string;
+  workings?: Working[];
 }
 
 export interface Lesson {
   id: string;
-  title: string;
-  description: string;
-  createdBy: User;
   content: string;
-  order: number;
-  duration: number; // in minutes
-  difficulty: 'Easy' | 'Medium' | 'Hard';
-  isCompleted?: boolean;
   courseId?: string; // Optional field for when lesson is fetched individually
+  createdBy: User;
+  description: string;
+  difficulty: 'Easy' | 'Medium' | 'Hard';
+  duration: number; // in minutes
+  isCompleted?: boolean;
+  order: number;
+  title: string;
 }
 
 export interface Course {
   id: string;
-  title: string;
-  description: string;
-  createdBy: User;
   createdAt: Date;
-  updatedAt: Date;
+  createdBy: User;
+  description: string;
+  isPublic: boolean;
+  // lessons: Lesson[];
   level: 'High school' | 'Bachelor' | 'Master';
   subject: string;
   tags: string[];
-  lessons: Lesson[];
-  isPublic: boolean;
+  title: string;
+  updatedAt: Date;
 }
 
 export interface UserAnswer {
   id: string;
-  userId: string;
+  abstractionLevel: number; // 0 = original, 1+ = levels of abstraction
+  attemptNumber: number; // for tracking multiple attempts
+  correctAnswer?: string;
   courseRef: any; // DocumentReference to /course/{courseId}
+  isCorrect: boolean;
   lessonRef: any; // DocumentReference to /course/{courseId}/lesson/{lessonId}
   promptRef: any; // DocumentReference to /course/{courseId}/lesson/{lessonId}/prompt/{promptId}
-  abstractionLevel: number; // 0 = original, 1+ = levels of abstraction
-  userAnswer: string;
-  correctAnswer?: string;
-  isCorrect: boolean;
   submittedAt: Date | any; // Can be Firestore Timestamp or Date
   timeSpent?: number; // seconds from modal open to submission
-  attemptNumber: number; // for tracking multiple attempts
+  userAnswer: string;
+  userId: string;
 }

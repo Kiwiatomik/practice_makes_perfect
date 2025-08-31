@@ -3,10 +3,11 @@ import Button from 'react-bootstrap/Button'
 import Badge from 'react-bootstrap/Badge'
 import Modal from 'react-bootstrap/Modal'
 import Form from 'react-bootstrap/Form'
-import Accordion from 'react-bootstrap/Accordion'
 import { Working } from '../types'
-import { InlineMath, BlockMath } from 'react-katex'
-import { LATEX_REPLACEMENTS } from '../hooks/useModal'
+import LatexHelperButtons from './LatexHelperButtons'
+import SolutionSection from './SolutionSection'
+import { LatexRenderer } from '../utils/LatexRenderer'
+import { useRef, useState, useEffect } from 'react'
 
 interface QuestionModalProps {
   show: boolean
@@ -47,100 +48,49 @@ function QuestionModal({
   solution,
   workings
 }: QuestionModalProps) {
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const [debouncedUserAnswer, setDebouncedUserAnswer] = useState(userAnswer)
 
   // Default to equation if answerType is undefined
   const effectiveAnswerType = answerType || 'equation'
 
-  const renderLatexContent = (content: string) => {
-    if (!content) return '';
-    
-    try {
-      // Split content by LaTeX delimiters while preserving them
-      const parts = content.split(/(\$\$[\s\S]*?\$\$|\\\[[\s\S]*?\\\]|\\\([\s\S]*?\\\))/);
-      
-      // Process each part and collect the results
-      const renderedParts: React.ReactNode[] = [];
-      
-      for (let i = 0; i < parts.length; i++) {
-        const part = parts[i];
-        
-        // Skip empty parts
-        if (!part || part.length === 0) continue;
-        
-        try {
-          // Block math: $$ ... $$ or \[ ... \]
-          if (part.startsWith('$$') && part.endsWith('$$')) {
-            const math = part.slice(2, -2);
-            renderedParts.push(<BlockMath key={i} math={math} />);
-          } else if (part.startsWith('\\[') && part.endsWith('\\]')) {
-            const math = part.slice(2, -2);
-            renderedParts.push(<BlockMath key={i} math={math} />);
-          } else if (part.startsWith('\\(') && part.endsWith('\\)')) {
-            // Inline math: \( ... \)
-            const math = part.slice(2, -2);
-            renderedParts.push(<InlineMath key={i} math={math} />);
-          } else {
-            // Regular text - only add if it's not whitespace only
-            const trimmedPart = part.trim();
-            if (trimmedPart) {
-              renderedParts.push(<span key={i}>{part}</span>);
-            }
-          }
-        } catch (latexError) {
-          console.warn('LaTeX rendering error for part:', part, latexError);
-          renderedParts.push(<span key={i} style={{ color: '#dc3545', fontFamily: 'monospace' }}>{part}</span>);
-        }
-      }
-      
-      return <>{renderedParts}</>;
-      
-    } catch (error) {
-      console.warn('LaTeX content parsing error:', error);
-      return content;
-    }
-  };
+  // Debounce the user answer for LaTeX preview
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedUserAnswer(userAnswer)
+    }, 300) // 300ms debounce delay
 
-  const renderLatexPreview = (content: string) => {
-    try {
-      // Clean the content - remove any existing LaTeX delimiters
-      let cleanContent = content.trim();
-      
-      // Remove common LaTeX delimiters if user included them
-      cleanContent = cleanContent.replace(/^\\\(/, '').replace(/\\\)$/, '');
-      cleanContent = cleanContent.replace(/^\$\$?/, '').replace(/\$\$?$/, '');
-      cleanContent = cleanContent.replace(/^\\\[/, '').replace(/\\\]$/, '');
-      
-      // Apply LaTeX command replacements (same as sanitization)
-      Object.entries(LATEX_REPLACEMENTS).forEach(([from, to]) => {
-        cleanContent = cleanContent.replace(new RegExp(from.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), to)
-      })
-      
-      // Try to render as inline math directly
-      return <InlineMath math={cleanContent} />;
-    } catch (error) {
-      console.warn('LaTeX preview error:', error);
-      // Fallback to displaying raw text if LaTeX fails
-      return <span style={{ color: '#dc3545', fontFamily: 'monospace' }}>{content}</span>;
-    }
-  };
-  const renderWorkings = (workings: Working[]) => {
-    return workings.map((item, index) => {
-      if (item.format === 'title') {
-        return (
-          <h6 key={index} className="fw-bold mt-3 mb-2">
-            {renderLatexContent(item.content)}
-          </h6>
-        );
-      } else if (item.format === 'paragraph') {
-        return (
-          <div key={index} className="mb-2" style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6' }}>
-            {renderLatexContent(item.content)}
-          </div>
-        );
+    return () => clearTimeout(timer)
+  }, [userAnswer])
+
+  const handleLatexInsert = (latex: string) => {
+    const textarea = textareaRef.current
+    if (!textarea) return
+
+    const start = textarea.selectionStart
+    const end = textarea.selectionEnd
+    const currentValue = userAnswer
+
+    // Insert the LaTeX command at cursor position
+    const newValue = currentValue.slice(0, start) + latex + currentValue.slice(end)
+    onAnswerChange(newValue)
+
+    // Set cursor position after the inserted text
+    setTimeout(() => {
+      if (latex.includes('{}')) {
+        // If the command includes braces, position cursor inside them
+        const bracePosition = start + latex.indexOf('{}')
+        textarea.setSelectionRange(bracePosition, bracePosition)
+      } else {
+        // Otherwise, position at the end of the inserted text
+        textarea.setSelectionRange(start + latex.length, start + latex.length)
       }
-      return null;
-    });
+      textarea.focus()
+    }, 0)
   }
+
+
+
 
   return (
     <Modal 
@@ -148,40 +98,61 @@ function QuestionModal({
       onHide={onHide}
       size="lg"
       centered
+      aria-labelledby="question-modal-title"
+      aria-describedby="question-modal-description"
     >
       <Modal.Header closeButton>
-        <Modal.Title>Question</Modal.Title>
+        <Modal.Title id="question-modal-title">Question</Modal.Title>
       </Modal.Header>
       <Modal.Body>
-        <div className="mb-4">
-          <h6 className="fw-bold mb-2">Question:</h6>
-          <div style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6' }} className="p-3 bg-light rounded">
-            {renderLatexContent(questionText)}
+        <div className="mb-4" id="question-modal-description">
+          <h6 className="fw-bold mb-2" id="question-text-label">Question:</h6>
+          <div 
+            style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6' }} 
+            className="p-3 bg-light rounded"
+            role="article"
+            aria-labelledby="question-text-label"
+          >
+            {LatexRenderer.renderContent(questionText)}
           </div>
           {questionGenerationError && (
-            <Alert variant="warning" className="mt-2 py-2">
+            <Alert variant="warning" className="mt-2 py-2" role="alert">
               <small>{questionGenerationError}</small>
             </Alert>
           )}
         </div>
 
-        <Form>
+        <Form role="form" aria-label="Answer submission form">
           <Form.Group className="mb-4">
             <div className="d-flex align-items-center justify-content-between">
-              <Form.Label>Your Answer</Form.Label>
+              <Form.Label htmlFor="user-answer-input" id="answer-label">Your Answer</Form.Label>
               <div className="d-flex align-items-center gap-2">
-                <Badge bg="info" className="text-dark">
+                <Badge 
+                  bg="info" 
+                  className="text-dark"
+                  aria-label={`Answer type: ${effectiveAnswerType === 'number' ? 'Number' : 'Equation'}`}
+                >
                   {effectiveAnswerType === 'number' ? 'Number' : 'Equation'}
                 </Badge>
                 {hasSubmittedAnswer && (
-                  <Badge bg={isCorrect ? "success" : "danger"}>
+                  <Badge 
+                    bg={isCorrect ? "success" : "danger"}
+                    aria-label={`Answer status: ${isCorrect ? 'Correct' : 'Incorrect'}`}
+                  >
                     {isCorrect ? "✓ Correct!" : "✗ Incorrect"}
                   </Badge>
                 )}
               </div>
             </div>
+            {effectiveAnswerType === 'equation' && !hasSubmittedAnswer && (
+              <div role="toolbar" aria-label="LaTeX symbol insertion tools">
+                <LatexHelperButtons onInsert={handleLatexInsert} />
+              </div>
+            )}
             <Form.Control
               as="textarea"
+              id="user-answer-input"
+              ref={textareaRef}
               rows={effectiveAnswerType === 'number' ? 2 : 4}
               placeholder={
                 effectiveAnswerType === 'number' 
@@ -191,68 +162,36 @@ function QuestionModal({
               value={userAnswer}
               onChange={(e) => onAnswerChange(e.target.value)}
               disabled={hasSubmittedAnswer}
+              aria-labelledby="answer-label"
+              aria-describedby={effectiveAnswerType === 'equation' && debouncedUserAnswer.trim() ? "latex-preview" : undefined}
             />
-            {effectiveAnswerType === 'equation' && userAnswer.trim() && (
-              <div className="mt-2">
+            {effectiveAnswerType === 'equation' && debouncedUserAnswer.trim() && (
+              <div className="mt-2" id="latex-preview" role="region" aria-live="polite">
                 <small className="text-muted">Preview:</small>
-                <div className="p-2 bg-light">
-                  {renderLatexPreview(userAnswer)} 
+                <div 
+                  className="p-2 bg-light"
+                  aria-label={`LaTeX preview of your equation: ${debouncedUserAnswer}`}
+                >
+                  {LatexRenderer.renderPreview(debouncedUserAnswer)}
                 </div>
               </div>
             )}
           </Form.Group>
         </Form>
 
-        {hasSubmittedAnswer && (
-          <div className="mb-4">
-            <Accordion>
-              <Accordion.Item eventKey="0">
-                <Accordion.Header>
-                  <strong>Solution</strong>
-                </Accordion.Header>
-                <Accordion.Body>
-                  {isLoadingSolution && (
-                    <div className="text-center py-3">
-                      <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                      Loading solution...
-                    </div>
-                  )}
-                  
-                  {solutionError && (
-                    <Alert variant="warning" className="py-2">
-                      <small>{solutionError}</small>
-                    </Alert>
-                  )}
-                  
-                  {solution && !isLoadingSolution && (
-                    <div>
-                      {solution === 'workings' && workings ? (
-                        <div>
-                          {renderWorkings(workings)}
-                        </div>
-                      ) : (
-                        <div style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6' }}>
-                          {renderLatexContent(solution)}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                  
-                  {!solution && !solutionError && !isLoadingSolution && (
-                    <div className="text-muted text-center py-3">
-                      <small>Solution will be loaded automatically</small>
-                    </div>
-                  )}
-                </Accordion.Body>
-              </Accordion.Item>
-            </Accordion>
-          </div>
-        )}
+        <SolutionSection
+          hasSubmittedAnswer={hasSubmittedAnswer}
+          isLoadingSolution={isLoadingSolution}
+          solutionError={solutionError}
+          solution={solution}
+          workings={workings}
+        />
       </Modal.Body>
-      <Modal.Footer>
+      <Modal.Footer role="toolbar" aria-label="Modal actions">
         <Button 
           variant="secondary" 
           onClick={onHide}
+          aria-label="Close question modal"
         >
           Close
         </Button>
@@ -260,11 +199,13 @@ function QuestionModal({
           variant="outline-warning"
           onClick={() => onGenerateQuestion('practice')}
           disabled={isGeneratingQuestion || !questionText}
+          aria-label="Generate a new practice question with different values"
+          aria-describedby={isGeneratingQuestion ? "generating-status" : undefined}
         >
           {isGeneratingQuestion ? (
             <>
               <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-              Generating...
+              <span id="generating-status">Generating...</span>
             </>
           ) : (
             'Practice again'
@@ -275,6 +216,7 @@ function QuestionModal({
             variant="primary"
             onClick={onSubmitAnswer}
             disabled={!userAnswer.trim()}
+            aria-label="Submit your answer for evaluation"
           >
             Submit Answer
           </Button>
@@ -283,11 +225,13 @@ function QuestionModal({
             variant="success"
             onClick={() => onGenerateQuestion('nextLevel')}
             disabled={isGeneratingQuestion || !questionText}
+            aria-label="Generate a more challenging question with increased abstraction"
+            aria-describedby={isGeneratingQuestion ? "generating-status" : undefined}
           >
             {isGeneratingQuestion ? (
               <>
                 <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                Generating...
+                <span>Generating...</span>
               </>
             ) : (
               'Next Level'

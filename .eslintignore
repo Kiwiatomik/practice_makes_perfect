@@ -1,0 +1,7 @@
+dist/
+node_modules/
+*.min.js
+*.min.css
+vite.config.ts
+src/config/deepseekMessages.ts
+src/config/deepseekMessages.example.ts

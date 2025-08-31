@@ -1,15 +1,15 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router'
 import Navigation from './components/Navigation'
-import Home from './components/Home'
-import Dashboard from './components/Dashboard'
-import Lesson from './components/Lesson'
-import Courses from './components/Courses'
-import CoursePage from './components/CoursePage'
-import Account from './components/Account'
-import AdminQuestionPopulator from './components/AdminQuestionPopulator'
+import Home from './pages/Home'
+import Dashboard from './pages/Dashboard'
+import Lesson from './pages/Lesson'
+import BrowseCourses from './pages/BrowseCourses'
+import CoursePage from './pages/CoursePage'
+import Account from './pages/Account'
+import AdminQuestionPopulator from './pages/AdminQuestionPopulator'
+import NotFound from './pages/NotFound'
 import ProtectedRoute from './components/ProtectedRoute'
 import './styles/custom-bootstrap.scss'
-import './App.css'
 
 function App() {
   return (
@@ -22,7 +22,7 @@ function App() {
             <Dashboard />
           </ProtectedRoute>
         } />
-        <Route path="/courses" element={<Courses />} />
+        <Route path="/courses" element={<BrowseCourses />} />
         <Route path="/course/:id" element={<CoursePage />} />
         <Route path="/lesson" element={
           <ProtectedRoute>
@@ -39,7 +39,7 @@ function App() {
             <Account />
           </ProtectedRoute>
         } />
-        <Route path="/admin/questions" element={<AdminQuestionPopulator />} />
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </Router>
   )

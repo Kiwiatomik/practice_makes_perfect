@@ -1,10 +1,17 @@
 // Custom Bootstrap variable overrides
-$primary: #ffd333;
+$primary-dark: #ffd333;
 $dark: #1a1a1a;
 $light: #ffffff;
 
 // Set primary button text color to black
 $primary-color: #000000;
+
+
+$primary-light: #FF4A03;
+
+
+$primary: #FF4A03;
+
 
 // Custom spacing (adjust default paddings)
 $spacer: 1rem;
@@ -20,9 +27,53 @@ $spacers: (
 // Import Bootstrap
 @import "bootstrap/scss/bootstrap";
 
-// Export variables as CSS custom properties
+// Theme variables - Light mode as default
 :root {
-  --bs-primary: #{$primary};
+  --bs-primary: #{$primary-light};
   --bs-dark: #{$dark};
   --bs-light: #{$light};
+  
+  // Light theme colors (default)
+  --bg-color: #ffffff;
+  --text-color: #212529;
+  --card-bg: #f8f9fa;
+  --border-color: #dee2e6;
+  --input-bg: #ffffff;
+  --input-text: #212529;
+}
+
+// Dark theme variables (explicit)
+[data-theme="dark"] {
+  --bs-primary: #{$primary-dark};
+  --bg-color: #1a1a1a;
+  --text-color: #ffffff;
+  --card-bg: #212529;
+  --border-color: #6c757d;
+  --input-bg: #ffffff;
+  --input-text: #212529;
+}
+
+// Light theme variables
+[data-theme="light"] {
+  --bs-primary: #{$primary-light};
+  --bg-color: #ffffff;
+  --text-color: #212529;
+  --card-bg: #f8f9fa;
+  --border-color: #dee2e6;
+  --input-bg: #ffffff;
+  --input-text: #212529;
+}
+
+// Force Bootstrap buttons to use theme-aware colors
+.btn-primary {
+  background-color: var(--bs-primary) !important;
+  border-color: var(--bs-primary) !important;
+}
+
+.btn-primary:hover,
+.btn-primary:focus,
+.btn-primary:active {
+  background-color: var(--bs-primary) !important;
+  border-color: var(--bs-primary) !important;
+  opacity: 0.85;
 }

@@ -1,86 +1,90 @@
-/* Auth Modal Dark Theme Styles */
+/* Auth Modal Theme-Aware Styles */
 
 /* Modal Structure */
 .auth-modal .modal-header {
-  background-color: #212529;
-  color: #ffffff;
-  border-bottom: 1px solid #6c757d;
+  background-color: var(--card-bg);
+  color: var(--text-color);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .auth-modal .modal-body {
-  background-color: #212529;
-  color: #ffffff;
+  background-color: var(--card-bg);
+  color: var(--text-color);
 }
 
 /* Form Controls */
 .auth-modal .form-label {
-  color: #ffffff;
+  color: var(--text-color);
 }
 
 .auth-modal .form-control {
-  background-color: #ffffff;
-  color: #212529;
-  border: 1px solid #dee2e6;
+  background-color: var(--input-bg);
+  color: var(--input-text);
+  border: 1px solid var(--border-color);
 }
 
 .auth-modal .form-control:focus {
-  background-color: #ffffff;
-  color: #212529;
-  border-color: #ffc107;
-  box-shadow: 0 0 0 0.2rem rgba(255, 193, 7, 0.25);
+  background-color: var(--input-bg);
+  color: var(--input-text);
+  border-color: var(--bs-primary);
+  box-shadow: 0 0 0 0.2rem rgba(255, 211, 51, 0.25);
 }
 
 .auth-modal .form-control::placeholder {
-  color: #6c757d;
+  color: var(--border-color);
 }
 
 .auth-modal .form-control:disabled {
-  background-color: #e9ecef;
-  color: #6c757d;
+  background-color: var(--border-color);
+  color: var(--text-color);
+  opacity: 0.6;
 }
 
 /* Divider Text */
 .auth-modal .divider-text {
-  color: #f8f9fa;
+  color: var(--text-color);
+  opacity: 0.8;
 }
 
 /* Google Button */
 .auth-modal .google-btn {
-  border-color: #6c757d;
-  color: #ffffff;
+  border-color: var(--border-color);
+  color: var(--text-color);
   background-color: transparent;
   transition: all 0.3s ease;
 }
 
 .auth-modal .google-btn:hover {
-  background-color: #495057;
-  border-color: #6c757d;
-  color: #ffffff;
+  background-color: var(--border-color);
+  border-color: var(--border-color);
+  color: var(--text-color);
+  opacity: 0.8;
 }
 
 .auth-modal .google-btn:focus {
-  box-shadow: 0 0 0 0.2rem rgba(108, 117, 125, 0.25);
+  box-shadow: 0 0 0 0.2rem rgba(255, 211, 51, 0.25);
 }
 
 /* Switch Mode Link */
 .auth-modal .switch-mode-btn {
-  color: #ffffff;
+  color: var(--text-color);
   transition: color 0.3s ease;
 }
 
 .auth-modal .switch-mode-btn:hover {
-  color: #ffc107;
+  color: var(--bs-primary);
 }
 
 .auth-modal .switch-mode-btn:focus {
-  color: #ffc107;
+  color: var(--bs-primary);
   box-shadow: none;
 }
 
 /* Loading State */
 .auth-modal .loading .form-control {
-  background-color: #e9ecef;
-  color: #6c757d;
+  background-color: var(--border-color);
+  color: var(--text-color);
+  opacity: 0.6;
 }
 
 /* Background Blur Effect */
@@ -100,7 +104,13 @@ body.modal-scroll-lock {
 
 /* Error Alert Styling */
 .auth-modal .alert-danger {
-  background-color: #721c24;
-  border-color: #842029;
-  color: #ea868f;
+  background-color: rgba(220, 53, 69, 0.1);
+  border-color: rgba(220, 53, 69, 0.3);
+  color: #dc3545;
+}
+
+[data-theme="light"] .auth-modal .alert-danger {
+  background-color: rgba(248, 215, 218, 1);
+  border-color: rgba(245, 198, 203, 1);
+  color: #721c24;
 }
