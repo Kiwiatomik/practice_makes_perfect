@@ -9,6 +9,7 @@ import { getDifficultyColor } from '../utils/badgeColors'
 
 interface LessonCardProps {
   lesson: Lesson
+  courseId: string
   lessonNumber?: number
   showNumber?: boolean
   className?: string
@@ -16,6 +17,7 @@ interface LessonCardProps {
 
 function LessonCard({ 
   lesson, 
+  courseId,
   lessonNumber = 1, 
   showNumber = true, 
   className = '' 
@@ -38,7 +40,7 @@ function LessonCard({
             <div className="d-flex align-items-center mb-1">
               <Card.Title className="mb-0 me-2">
                 <Link 
-                  to={`/lesson/${lesson.id}`} 
+                  to={`/course/${courseId}/lesson/${lesson.id}`} 
                   className="text-decoration-none text-reset"
                 >
                   {lesson.title}
@@ -55,7 +57,7 @@ function LessonCard({
           <Col md={showNumber ? 5 : 4} className="text-end">
             <Button
               as={Link}
-              to={`/lesson/${lesson.id}`}
+              to={`/course/${courseId}/lesson/${lesson.id}`}
               variant={lesson.isCompleted ? 'outline-success' : 'primary'}
               size="sm"
             >

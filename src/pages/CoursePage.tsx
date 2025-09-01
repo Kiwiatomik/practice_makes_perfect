@@ -75,7 +75,8 @@ function CoursePage() {
               .map((lesson, index) => (
                 <Col key={lesson.id} xs={12}>
                   <LessonCard 
-                    lesson={lesson} 
+                    lesson={lesson}
+                    courseId={course.id}
                     lessonNumber={index + 1}
                     showNumber={true}
                   />

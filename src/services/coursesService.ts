@@ -187,30 +187,19 @@ export const coursesService = {
     }
   },
 
-  async getLessonById(lessonId: string): Promise<Lesson | null> {
+  async getLessonById(courseId: string, lessonId: string): Promise<Lesson | null> {
     try {
-      // First try to get all courses to search their subcollections
-      const coursesSnapshot = await getDocs(collection(db, COURSES_COLLECTION));
+      const lessonDoc = await getDoc(
+        doc(db, COURSES_COLLECTION, courseId, LESSONS_COLLECTION, lessonId)
+      );
       
-      // Search through each course's lesson subcollection
-      for (const courseDoc of coursesSnapshot.docs) {
-        try {
-          const lessonDoc = await getDoc(
-            doc(db, COURSES_COLLECTION, courseDoc.id, LESSONS_COLLECTION, lessonId)
-          );
-          
-          if (lessonDoc.exists()) {
-            const lesson = convertDocumentToLesson(lessonDoc as QueryDocumentSnapshot<DocumentData>);
-            // Add courseId to the lesson object
-            return { ...lesson, courseId: courseDoc.id };
-          }
-        } catch (error) {
-          // Continue searching other courses
-          console.warn(`Lesson ${lessonId} not found in course ${courseDoc.id}`);
-        }
+      if (lessonDoc.exists()) {
+        const lesson = convertDocumentToLesson(lessonDoc as QueryDocumentSnapshot<DocumentData>);
+        // Add courseId to the lesson object
+        return { ...lesson, courseId };
       }
       
-      return null; // Lesson not found in any course
+      return null;
     } catch (error) {
       console.error('Error fetching lesson:', error);
       throw new Error('Failed to fetch lesson');

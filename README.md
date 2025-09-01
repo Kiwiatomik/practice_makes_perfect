@@ -78,3 +78,4 @@ Access the admin interface at `/admin/questions` to:
 ## Project Management
 
 Task progress was monitored using GitHub's kaban boards
+![An example of a Kaban board](/src/assets/screenshot_github_kaban_board.png)

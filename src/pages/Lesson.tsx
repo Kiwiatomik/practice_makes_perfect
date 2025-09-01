@@ -18,11 +18,11 @@ import { getDifficultyColor } from '../utils/badgeColors'
 import { sanitizeLessonError } from '../utils/errorSanitization'
 
 function Lesson() {
-  const { id } = useParams<{ id: string }>()
+  const { courseId, lessonId } = useParams<{ courseId: string; lessonId: string }>()
   
   // Custom hooks
   const { currentUser } = useAuth()
-  const { lesson, loading, error, firstPrompt, promptLoading, refetch } = useLesson(id)
+  const { lesson, loading, error, firstPrompt, promptLoading, refetch } = useLesson(courseId, lessonId)
   const { promptState, solveQuestionWithAI, generateQuestion, resetToOriginal } = usePrompt(firstPrompt)
   const { modalState, showModal, hideModal, setUserAnswer, submitAnswer, resetForNewQuestion } = useModal()
 
@@ -30,11 +30,11 @@ function Lesson() {
 
   // Helper function for generating questions with modal state reset
   const handleGenerateQuestion = useCallback(async (type: 'practice' | 'nextLevel') => {
-    const success = await generateQuestion(type, lesson?.courseId, id)
+    const success = await generateQuestion(type, courseId, lessonId)
     if (success) {
       resetForNewQuestion()
     }
-  }, [generateQuestion, lesson?.courseId, id, resetForNewQuestion])
+  }, [generateQuestion, courseId, lessonId, resetForNewQuestion])
 
   // Handle modal close - just hide, don't reset data
   const handleModalClose = useCallback(() => {
@@ -54,7 +54,7 @@ function Lesson() {
     submitAnswer(promptState.answer, promptState.answerType)
     
     // Record the answer in database
-    if (currentUser && firstPrompt && lesson?.courseId && id) {
+    if (currentUser && firstPrompt && courseId && lessonId) {
       try {
         const answerData = {
           abstractionLevel: promptState.abstractionLevel || firstPrompt.abstractionLevel || 0,
@@ -65,8 +65,8 @@ function Lesson() {
         
         await coursesService.recordUserAnswer(
           currentUser.uid,
-          lesson.courseId,
-          id,
+          courseId,
+          lessonId,
           firstPrompt.id,
           answerData
         )
@@ -78,7 +78,7 @@ function Lesson() {
     
     // Automatically load solution after submitting answer
     solveQuestionWithAI()
-  }, [submitAnswer, promptState.answer, promptState.answerType, promptState.abstractionLevel, currentUser, firstPrompt, lesson?.courseId, id, modalState.userAnswer, modalState.isCorrect, solveQuestionWithAI])
+  }, [submitAnswer, promptState.answer, promptState.answerType, promptState.abstractionLevel, currentUser, firstPrompt, courseId, lessonId, modalState.userAnswer, modalState.isCorrect, solveQuestionWithAI])
 
 
 
@@ -93,8 +93,8 @@ function Lesson() {
         title="Error Loading Lesson" 
         message={sanitizeLessonError(error)} 
         onRetry={refetch} 
-        backLink={lesson?.courseId ? `/course/${lesson.courseId}` : '/courses'} 
-        backText={lesson?.courseId ? 'Back to Course' : 'Back to Courses'} 
+        backLink={courseId ? `/course/${courseId}` : '/courses'} 
+        backText={courseId ? 'Back to Course' : 'Back to Courses'} 
       />
     )
   }
@@ -154,7 +154,7 @@ function Lesson() {
 
           <nav aria-label="Navigation">
             <Link 
-              to={`/course/${lesson.courseId}`} 
+              to={`/course/${courseId}`} 
               className="text-decoration-none"
               aria-label="Return to course page"
             >

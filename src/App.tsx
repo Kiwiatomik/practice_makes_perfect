@@ -24,16 +24,7 @@ function App() {
         } />
         <Route path="/courses" element={<BrowseCourses />} />
         <Route path="/course/:id" element={<CoursePage />} />
-        <Route path="/lesson" element={
-          <ProtectedRoute>
-            <Lesson />
-          </ProtectedRoute>
-        } />
-        <Route path="/lesson/:id" element={
-          <ProtectedRoute>
-            <Lesson />
-          </ProtectedRoute>
-        } />
+        <Route path="/course/:courseId/lesson/:lessonId" element={<Lesson />} />
         <Route path="/account" element={
           <ProtectedRoute>
             <Account />
