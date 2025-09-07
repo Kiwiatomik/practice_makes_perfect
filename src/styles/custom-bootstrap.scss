@@ -1,16 +1,21 @@
 // Custom Bootstrap variable overrides
-$primary-dark: #ffd333;
-$dark: #1a1a1a;
+$primary-dark: #ffd334;
+$dark: #212121;
 $light: #ffffff;
 
 // Set primary button text color to black
-$primary-color: #000000;
-
-
 $primary-light: #FF4A03;
 
+// Tag color variables
+$success: #16a34a;
+$success-light: #dcfce7;
+$success-dark: #14532d;
+$success-text-dark: #A8DCAB;
 
-$primary: #FF4A03;
+$alert: #dc2626;
+$alert-light: #fef2f2;
+$alert-dark: #7f1d1d;
+$alert-text-dark: #FA5053;
 
 
 // Custom spacing (adjust default paddings)
@@ -36,7 +41,7 @@ $spacers: (
   // Light theme colors (default)
   --bg-color: #ffffff;
   --text-color: #212529;
-  --card-bg: #f8f9fa;
+  --card-bg: #ff1f2f;
   --border-color: #dee2e6;
   --input-bg: #ffffff;
   --input-text: #212529;
@@ -45,12 +50,12 @@ $spacers: (
 // Dark theme variables (explicit)
 [data-theme="dark"] {
   --bs-primary: #{$primary-dark};
-  --bg-color: #1a1a1a;
-  --text-color: #ffffff;
-  --card-bg: #212529;
-  --border-color: #6c757d;
-  --input-bg: #ffffff;
-  --input-text: #212529;
+  --bg-color: #212121;
+  --text-color: #FFFAFA;
+  --card-bg: #2f3236;
+  --border-color: #2f3236;
+  --input-bg: #686b6e;
+  --input-text: #d1d1d2;
 }
 
 // Light theme variables
@@ -68,6 +73,7 @@ $spacers: (
 .btn-primary {
   background-color: var(--bs-primary) !important;
   border-color: var(--bs-primary) !important;
+  color: #000000 !important;
 }
 
 .btn-primary:hover,
@@ -75,5 +81,140 @@ $spacers: (
 .btn-primary:active {
   background-color: var(--bs-primary) !important;
   border-color: var(--bs-primary) !important;
-  opacity: 0.85;
+  color: #000000 !important;
+  opacity: 0.9 !important;
+}
+
+// Card styling
+.card {
+  background-color: var(--card-bg);
+  border-color: var(--border-color);
+  color: var(--text-color);
+}
+
+.card-body {
+  color: var(--text-color);
+}
+
+.card-text {
+  color: var(--text-color);
+}
+
+// Form input styling
+.form-control,
+.form-select {
+  background-color: var(--input-bg);
+  color: var(--input-text);
+  border-color: var(--border-color);
+}
+
+.form-control:focus,
+.form-select:focus {
+  background-color: var(--input-bg);
+  color: var(--input-text);
+  border-color: var(--bs-primary);
+}
+
+.form-control::placeholder {
+  color: var(--input-text);
+  opacity: 0.7;
+}
+
+// Tag styling - inspired by Tailwind approach
+.badge.tag-easy {
+  background-color: #{$success-light} !important;
+  color: #{$success} !important;
+}
+
+[data-theme="dark"] .badge.tag-easy {
+  background-color: var(--bg-color) !important;
+  color: #{$success-text-dark} !important;
+}
+
+.badge.tag-medium {
+  background-color: #fff7ed !important;
+  color: var(--bs-primary) !important;
+}
+
+[data-theme="dark"] .badge.tag-medium {
+  background-color: var(--bg-color) !important;
+  color: var(--bs-primary) !important;
+}
+
+.badge.tag-hard {
+  background-color: #{$alert-light} !important;
+  color: #{$alert} !important;
+}
+
+[data-theme="dark"] .badge.tag-hard {
+  background-color: var(--bg-color) !important;
+  color: #{$alert-text-dark} !important;
+}
+
+.badge.tag-subject {
+  background-color: var(--bg-color) !important;
+  color: var(--text-color) !important;
+}
+
+// Override Bootstrap's text-warning color
+.text-warning {
+  color: var(--bs-primary) !important;
+}
+
+// Question Modal styling to match card background
+.modal-header {
+  background-color: var(--card-bg);
+  color: var(--text-color);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.modal-body {
+  background-color: var(--card-bg);
+  color: var(--text-color);
+}
+
+.modal-footer {
+  background-color: var(--card-bg);
+  color: var(--text-color);
+  border-top: 1px solid var(--border-color);
+}
+
+// Question display areas to match card background and form control padding
+.question-display-bg {
+  background-color: var(--card-bg) !important;
+  color: var(--text-color);
+  padding: 0.375rem 0.75rem !important; // Bootstrap form-control padding
+}
+
+// Primary color for specific navigation links (not dropdown links)
+.primary-link {
+  color: var(--bs-primary) !important;
+  text-decoration: none !important;
+}
+
+.primary-link:hover,
+.primary-link:focus {
+  color: var(--bs-primary) !important;
+  opacity: 0.8 !important;
+}
+
+// LaTeX helper buttons styling
+.btn-outline-secondary {
+  color: var(--text-color) !important;
+  border-color: var(--text-color) !important;
+  background-color: transparent !important;
+}
+
+.btn-outline-secondary:hover,
+.btn-outline-secondary:focus,
+.btn-outline-secondary:active {
+  color: var(--text-color) !important;
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  border-color: var(--text-color) !important;
+}
+
+// LaTeX helpers label text
+.text-muted {
+  color: var(--text-color) !important;
+  opacity: 0.7 !important;
 }

@@ -115,15 +115,7 @@ function Lesson() {
       <Row>
         <Col>
           <header className="mb-4">
-            <div className="d-flex align-items-center mb-3">
-              <h1 className="mb-0 me-3" id="lesson-title">{lesson.title}</h1>
-              <Badge 
-                bg={getDifficultyColor(lesson.difficulty)}
-                aria-label={`Difficulty level: ${lesson.difficulty}`}
-              >
-                {lesson.difficulty}
-              </Badge>
-            </div>
+            <h1 className="mb-3" id="lesson-title">{lesson.title}</h1>
           </header>
 
           <main className="lesson-content">
@@ -152,15 +144,13 @@ function Lesson() {
             )}
           </div>
 
-          <nav aria-label="Navigation">
-            <Link 
-              to={`/course/${courseId}`} 
-              className="text-decoration-none"
-              aria-label="Return to course page"
-            >
-              Back to Course
-            </Link>
-          </nav>
+          <Link 
+            to={`/course/${courseId}`} 
+            className="primary-link"
+            aria-label="Return to course page"
+          >
+            Back to Course
+          </Link>
         </Col>
       </Row>
 

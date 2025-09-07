@@ -7,6 +7,8 @@ import BrowseCourses from './pages/BrowseCourses'
 import CoursePage from './pages/CoursePage'
 import Account from './pages/Account'
 import AdminQuestionPopulator from './pages/AdminQuestionPopulator'
+import CreateCourse from './pages/CreateCourse'
+import CreateLesson from './pages/CreateLesson'
 import NotFound from './pages/NotFound'
 import ProtectedRoute from './components/ProtectedRoute'
 import './styles/custom-bootstrap.scss'
@@ -28,6 +30,16 @@ function App() {
         <Route path="/account" element={
           <ProtectedRoute>
             <Account />
+          </ProtectedRoute>
+        } />
+        <Route path="/create-course" element={
+          <ProtectedRoute>
+            <CreateCourse />
+          </ProtectedRoute>
+        } />
+        <Route path="/course/:courseId/add-lesson" element={
+          <ProtectedRoute>
+            <CreateLesson />
           </ProtectedRoute>
         } />
         <Route path="*" element={<NotFound />} />

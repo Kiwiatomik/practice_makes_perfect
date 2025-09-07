@@ -30,7 +30,7 @@ function LessonCard({
           {showNumber && (
             <Col md={1} className="text-center">
               <div className={`rounded-circle d-inline-flex align-items-center justify-content-center ${
-                lesson.isCompleted ? 'bg-success text-white' : 'bg-light'
+                lesson.isCompleted ? 'bg-success' : ''
               }`} style={{ width: '40px', height: '40px' }}>
                 {lesson.isCompleted ? '✓' : lessonNumber}
               </div>
@@ -46,11 +46,11 @@ function LessonCard({
                   {lesson.title}
                 </Link>
               </Card.Title>
-              <Badge bg={getDifficultyColor(lesson.difficulty)} size="sm">
+              <Badge className={`tag-${lesson.difficulty.toLowerCase()}`} size="sm">
                 {lesson.difficulty}
               </Badge>
             </div>
-            <Card.Text className="text-muted mb-0">
+            <Card.Text className="mb-0">
               {lesson.description}
             </Card.Text>
           </Col>

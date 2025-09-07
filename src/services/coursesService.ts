@@ -43,12 +43,20 @@ const convertTimestamp = (timestamp: any): Date => {
 const convertDocumentToCourse = (doc: QueryDocumentSnapshot<DocumentData>): Course => {
   const data = doc.data();
   
+  // Debug logging for createdBy field
+  console.log('convertDocumentToCourse Debug - Raw data.createdBy:', data.createdBy);
+  console.log('convertDocumentToCourse Debug - data.createdBy?.id:', data.createdBy?.id);
+  console.log('convertDocumentToCourse Debug - data.createdBy?.uid:', data.createdBy?.uid);
+  
+  const createdById = data.createdBy?.id || data.createdBy?.uid || '';
+  console.log('convertDocumentToCourse Debug - Final createdById:', createdById);
+  
   return {
     id: doc.id,
     title: data.title || '',
     description: data.description || '',
     createdBy: {
-      id: data.createdBy?.id || '',
+      id: createdById,
       email: data.createdBy?.email || '',
       displayName: data.createdBy?.displayName || '',
       createdAt: convertTimestamp(data.createdBy?.createdAt),
@@ -163,13 +171,17 @@ export const coursesService = {
 
   async getCourseById(courseId: string): Promise<Course | null> {
     try {
+      console.log('getCourseById Debug - Fetching course with ID:', courseId);
       const courseDoc = await getDoc(doc(db, COURSES_COLLECTION, courseId));
       
       if (!courseDoc.exists()) {
+        console.log('getCourseById Debug - Course does not exist');
         return null;
       }
       
+      console.log('getCourseById Debug - Raw course document data:', courseDoc.data());
       let course = convertDocumentToCourse(courseDoc as QueryDocumentSnapshot<DocumentData>);
+      console.log('getCourseById Debug - Converted course:', course);
       
       // Fetch lessons from subcollection
       try {
@@ -223,16 +235,35 @@ export const coursesService = {
 
   async createCourse(courseData: Omit<Course, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
     try {
+      // Validation: Ensure course has a creator
+      if (!courseData.createdBy || !courseData.createdBy.id) {
+        console.error('createCourse Error - No creator provided:', courseData.createdBy);
+        throw new Error('Course must have a valid creator');
+      }
+      
       const now = new Date();
-      const docRef = await addDoc(collection(db, COURSES_COLLECTION), {
+      
+      // Debug logging for course creation
+      console.log('createCourse Debug - Input courseData:', courseData);
+      console.log('createCourse Debug - courseData.createdBy:', courseData.createdBy);
+      console.log('createCourse Debug - courseData.createdBy.id:', courseData.createdBy?.id);
+      
+      const dataToStore = {
         ...courseData,
         createdAt: now,
         updatedAt: now
-      });
+      };
+      
+      console.log('createCourse Debug - Data being stored:', dataToStore);
+      console.log('createCourse Debug - createdBy in stored data:', dataToStore.createdBy);
+      
+      const docRef = await addDoc(collection(db, COURSES_COLLECTION), dataToStore);
+      console.log('createCourse Debug - Course created with ID:', docRef.id);
+      
       return docRef.id;
     } catch (error) {
       console.error('Error creating course:', error);
-      throw new Error('Failed to create course');
+      throw new Error(error instanceof Error ? error.message : 'Failed to create course');
     }
   },
 
@@ -258,19 +289,9 @@ export const coursesService = {
     }
   },
 
-  async createLesson(lessonData: Omit<Lesson, 'id'>): Promise<string> {
+  async updateLesson(courseId: string, lessonId: string, updates: Partial<Lesson>): Promise<void> {
     try {
-      const docRef = await addDoc(collection(db, LESSONS_COLLECTION), lessonData);
-      return docRef.id;
-    } catch (error) {
-      console.error('Error creating lesson:', error);
-      throw new Error('Failed to create lesson');
-    }
-  },
-
-  async updateLesson(lessonId: string, updates: Partial<Lesson>): Promise<void> {
-    try {
-      const lessonRef = doc(db, LESSONS_COLLECTION, lessonId);
+      const lessonRef = doc(db, COURSES_COLLECTION, courseId, LESSONS_COLLECTION, lessonId);
       await updateDoc(lessonRef, updates);
     } catch (error) {
       console.error('Error updating lesson:', error);
@@ -278,9 +299,9 @@ export const coursesService = {
     }
   },
 
-  async deleteLesson(lessonId: string): Promise<void> {
+  async deleteLesson(courseId: string, lessonId: string): Promise<void> {
     try {
-      await deleteDoc(doc(db, LESSONS_COLLECTION, lessonId));
+      await deleteDoc(doc(db, COURSES_COLLECTION, courseId, LESSONS_COLLECTION, lessonId));
     } catch (error) {
       console.error('Error deleting lesson:', error);
       throw new Error('Failed to delete lesson');
@@ -373,6 +394,26 @@ export const coursesService = {
     } catch (error) {
       console.error('Error fetching first prompt for lesson:', error);
       throw new Error('Failed to fetch lesson prompt');
+    }
+  },
+
+  async createLesson(courseId: string, lessonData: Omit<Lesson, 'id' | 'createdAt' | 'courseId'>): Promise<string> {
+    try {
+      console.log('Creating lesson:', { courseId, lessonData });
+      
+      const docRef = await addDoc(
+        collection(db, COURSES_COLLECTION, courseId, LESSONS_COLLECTION),
+        {
+          ...lessonData,
+          createdAt: serverTimestamp()
+        }
+      );
+      
+      console.log('Lesson created with ID:', docRef.id);
+      return docRef.id;
+    } catch (error) {
+      console.error('Error creating lesson:', error);
+      throw new Error(`Failed to create lesson: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   },
 

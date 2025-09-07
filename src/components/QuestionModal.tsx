@@ -109,7 +109,7 @@ function QuestionModal({
           <h6 className="fw-bold mb-2" id="question-text-label">Question:</h6>
           <div 
             style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6' }} 
-            className="p-3 bg-light rounded"
+            className="question-display-bg rounded"
             role="article"
             aria-labelledby="question-text-label"
           >
@@ -127,13 +127,6 @@ function QuestionModal({
             <div className="d-flex align-items-center justify-content-between">
               <Form.Label htmlFor="user-answer-input" id="answer-label">Your Answer</Form.Label>
               <div className="d-flex align-items-center gap-2">
-                <Badge 
-                  bg="info" 
-                  className="text-dark"
-                  aria-label={`Answer type: ${effectiveAnswerType === 'number' ? 'Number' : 'Equation'}`}
-                >
-                  {effectiveAnswerType === 'number' ? 'Number' : 'Equation'}
-                </Badge>
                 {hasSubmittedAnswer && (
                   <Badge 
                     bg={isCorrect ? "success" : "danger"}
@@ -169,7 +162,7 @@ function QuestionModal({
               <div className="mt-2" id="latex-preview" role="region" aria-live="polite">
                 <small className="text-muted">Preview:</small>
                 <div 
-                  className="p-2 bg-light"
+                  className="question-display-bg rounded"
                   aria-label={`LaTeX preview of your equation: ${debouncedUserAnswer}`}
                 >
                   {LatexRenderer.renderPreview(debouncedUserAnswer)}
@@ -189,13 +182,6 @@ function QuestionModal({
       </Modal.Body>
       <Modal.Footer role="toolbar" aria-label="Modal actions">
         <Button 
-          variant="secondary" 
-          onClick={onHide}
-          aria-label="Close question modal"
-        >
-          Close
-        </Button>
-        <Button 
           variant="outline-warning"
           onClick={() => onGenerateQuestion('practice')}
           disabled={isGeneratingQuestion || !questionText}
@@ -208,7 +194,7 @@ function QuestionModal({
               <span id="generating-status">Generating...</span>
             </>
           ) : (
-            'Practice again'
+            'Another question'
           )}
         </Button>
         {!hasSubmittedAnswer ? (

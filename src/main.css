@@ -28,10 +28,6 @@ body {
   min-height: 100vh;
 }
 
-.btn {
-  color: #000000;
-}
-
 /* App component styles */
 .App {
   text-align: center;

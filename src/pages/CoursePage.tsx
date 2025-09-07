@@ -3,7 +3,9 @@ import Container from 'react-bootstrap/Container'
 import Row from 'react-bootstrap/Row'
 import Col from 'react-bootstrap/Col'
 import Badge from 'react-bootstrap/Badge'
+import Button from 'react-bootstrap/Button'
 import { Link } from 'react-router'
+import { useAuth } from '../contexts/AuthContext'
 import { useGetCourse } from '../hooks/useGetCourse'
 import LessonCard from '../components/LessonCard'
 import CourseProgressBar from '../components/CourseProgressBar'
@@ -14,7 +16,16 @@ import ErrorState from '../components/shared/ErrorState'
 
 function CoursePage() {
   const { id } = useParams<{ id: string }>()
+  const { currentUser } = useAuth()
   const { course, loading, error, refetch } = useGetCourse(id)
+
+  // Debug logging for authorization check
+  console.log('CoursePage Debug - Current User:', currentUser)
+  console.log('CoursePage Debug - Current User UID:', currentUser?.uid)
+  console.log('CoursePage Debug - Course:', course)
+  console.log('CoursePage Debug - Course createdBy:', course?.createdBy)
+  console.log('CoursePage Debug - Course createdBy UID:', course?.createdBy?.uid)
+  console.log('CoursePage Debug - Is creator?:', course?.createdBy?.id === currentUser?.uid)
 
   if (loading) {
     return <LoadingState message="Loading course..." />
@@ -39,10 +50,6 @@ function CoursePage() {
           <div className="mb-4">
             <div className="d-flex align-items-center mb-3">
               <h1 className="mb-0 me-3">{course.title}</h1>
-              <Badge bg={getLevelColor(course.level)} className="me-2">
-                {course.level}
-              </Badge>
-              <Badge bg="secondary">{course.subject}</Badge>
             </div>
             <p className="lead mb-3">{course.description}</p>
             
@@ -57,14 +64,6 @@ function CoursePage() {
                 </div>
               </Col>
             </Row>
-
-            <div className="mb-4">
-              {course.tags.map(tag => (
-                <Badge key={tag} bg="light" text="dark" className="me-1 mb-1">
-                  #{tag}
-                </Badge>
-              ))}
-            </div>
           </div>
 
           <h2 className="mb-4">Lessons</h2>
@@ -83,6 +82,19 @@ function CoursePage() {
                 </Col>
               ))}
           </Row>
+          
+          {currentUser && course.createdBy.id === currentUser.uid && (
+            <div className="mt-3 text-center">
+              <Button 
+                as={Link}
+                to={`/course/${course.id}/add-lesson`}
+                variant="outline-primary"
+                size="sm"
+              >
+                + Add Lesson
+              </Button>
+            </div>
+          )}
         </Col>
       </Row>
     </Container>

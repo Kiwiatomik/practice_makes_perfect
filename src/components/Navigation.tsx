@@ -57,8 +57,10 @@ const Navigation = () => {
               <NavDropdown.Item as={Link} to="/courses">Browse Courses</NavDropdown.Item>
               {currentUser && (
                 <>
-                  <NavDropdown.Item as={Link} to="/dashboard">Dashboard</NavDropdown.Item>
+                  {/* <NavDropdown.Item as={Link} to="/dashboard">Dashboard</NavDropdown.Item> */}
                   <NavDropdown.Item as={Link} to="/account">Account</NavDropdown.Item>
+                  {/* <NavDropdown.Divider />
+                  <NavDropdown.Item as={Link} to="/create-course">Create Course</NavDropdown.Item> */}
                 </>
               )}
               <NavDropdown.Divider />
