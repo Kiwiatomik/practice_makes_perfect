@@ -16,6 +16,7 @@ import LoginModal from '../components/LoginModal'
 import RegisterModal from '../components/RegisterModal'
 import LoadingState from '../components/shared/LoadingState'
 import ErrorState from '../components/shared/ErrorState'
+import ErrorBoundary from '../components/ErrorBoundary'
 import { useModalBlurEffect } from '../hooks/useModalBlurEffect'
 import { getDifficultyColor } from '../utils/badgeColors'
 import { sanitizeLessonError } from '../utils/errorSanitization'
@@ -205,26 +206,28 @@ function Lesson() {
       </Row>
 
       {/* Question Modal */}
-      <QuestionModal
-        show={modalState.show}
-        onHide={handleModalClose}
-        questionText={promptState.text}
-        answerType={promptState.answerType || undefined}
-        questionGenerationError={promptState.questionGenerationError}
-        userAnswer={modalState.userAnswer}
-        hasSubmittedAnswer={modalState.hasSubmittedAnswer}
-        isCorrect={modalState.isCorrect}
-        onAnswerChange={setUserAnswer}
-        onSubmitAnswer={handleSubmitAnswer}
-        onGenerateQuestion={handleGenerateQuestion}
-        onGetSolution={handleGetSolution}
-        isGeneratingQuestion={promptState.isGeneratingQuestion}
-        isLoadingSolution={promptState.isLoadingSolution}
-        solutionError={promptState.solutionError}
-        solution={promptState.solution}
-        workings={promptState.workings}
-        aria-labelledby="lesson-title"
-      />
+      <ErrorBoundary>
+        <QuestionModal
+          show={modalState.show}
+          onHide={handleModalClose}
+          questionText={promptState.text}
+          answerType={promptState.answerType || undefined}
+          questionGenerationError={promptState.questionGenerationError}
+          userAnswer={modalState.userAnswer}
+          hasSubmittedAnswer={modalState.hasSubmittedAnswer}
+          isCorrect={modalState.isCorrect}
+          onAnswerChange={setUserAnswer}
+          onSubmitAnswer={handleSubmitAnswer}
+          onGenerateQuestion={handleGenerateQuestion}
+          onGetSolution={handleGetSolution}
+          isGeneratingQuestion={promptState.isGeneratingQuestion}
+          isLoadingSolution={promptState.isLoadingSolution}
+          solutionError={promptState.solutionError}
+          solution={promptState.solution}
+          workings={promptState.workings}
+          aria-labelledby="lesson-title"
+        />
+      </ErrorBoundary>
 
       {/* Authentication Modals */}
       <LoginModal
