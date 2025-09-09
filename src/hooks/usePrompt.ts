@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { Prompt, Working } from '../types'
-import { deepseekService } from '../services/deepseekService'
+import { aiService } from '../services/aiService'
 import { coursesService } from '../services/coursesService'
+import { useAuth } from '../contexts/AuthContext'
 
 interface PromptState {
   id: string | null
@@ -15,9 +16,11 @@ interface PromptState {
   isLoadingSolution: boolean
   solutionError: string | null
   solution: string | null
+  requiresAuth: boolean
 }
 
 export function usePrompt(initialPrompt: Prompt | null) {
+  const { currentUser } = useAuth()
   const [promptState, setPromptState] = useState<PromptState>({
     id: null,
     text: '',
@@ -29,7 +32,8 @@ export function usePrompt(initialPrompt: Prompt | null) {
     questionGenerationError: null,
     isLoadingSolution: false,
     solutionError: null,
-    solution: null
+    solution: null,
+    requiresAuth: false
   })
 
   // Initialize prompt state when initialPrompt changes
@@ -52,15 +56,23 @@ export function usePrompt(initialPrompt: Prompt | null) {
         questionGenerationError: null,
         isLoadingSolution: false,
         solutionError: null,
-        solution: null
+        solution: null,
+        requiresAuth: false
       })
       
       console.log('usePrompt - prompt state set with answerType:', initialPrompt.answerType || null)
     }
   }, [initialPrompt?.text, initialPrompt?.workings, initialPrompt?.answer, initialPrompt?.id, initialPrompt?.abstractionLevel, initialPrompt?.answerType])
 
-  const solveQuestionWithAI = async () => {
+  const solveQuestionWithAI = async (courseId?: string, lessonId?: string) => {
     if (!promptState.text) return
+
+    // Check if user is authenticated
+    if (!currentUser) {
+      console.log('User not authenticated, prompting for login')
+      setPromptState(prev => ({ ...prev, requiresAuth: true }))
+      return
+    }
 
     // If we already have workings, use those
     if (promptState.workings) {
@@ -89,7 +101,7 @@ export function usePrompt(initialPrompt: Prompt | null) {
         solutionError: null 
       }))
       
-      const solution = await deepseekService.solveQuestionWithAI(promptState.text)
+      const solution = await aiService.solveQuestionWithAI(promptState.text, courseId, lessonId)
       console.log('Raw solution response from API:', solution)
       
       // Parse the JSON response to extract workings
@@ -145,6 +157,13 @@ export function usePrompt(initialPrompt: Prompt | null) {
   const generateQuestion = async (type: 'practice' | 'nextLevel', courseId?: string, lessonId?: string) => {
     if (!promptState.text) return
 
+    // Check if user is authenticated
+    if (!currentUser) {
+      console.log('User not authenticated, prompting for login')
+      setPromptState(prev => ({ ...prev, requiresAuth: true }))
+      return false
+    }
+
     try {
       setPromptState(prev => ({ 
         ...prev, 
@@ -152,10 +171,10 @@ export function usePrompt(initialPrompt: Prompt | null) {
         questionGenerationError: null 
       }))
       
-      console.log(`${type} question - promptText sent to DeepSeek:`, promptState.text)
+      console.log(`${type} question - promptText sent to AI:`, promptState.text)
       const response = type === 'practice' 
-        ? await deepseekService.generatePracticeQuestion(promptState.text)
-        : await deepseekService.generateNextLevelQuestion(promptState.text)
+        ? await aiService.generatePracticeQuestion(promptState.text)
+        : await aiService.generateNextLevelQuestion(promptState.text)
       console.log(`Raw ${type} response:`, response)
       
       // Extract JSON from response (remove markdown code blocks if present)
@@ -170,7 +189,12 @@ export function usePrompt(initialPrompt: Prompt | null) {
         const parsedResponse = JSON.parse(jsonString)
         console.log('Parsed response:', parsedResponse)
         
-        if (parsedResponse.new_question) {
+        // Get the question text based on type
+        const questionText = type === 'practice' 
+          ? parsedResponse.new_question 
+          : parsedResponse.next_level_question;
+          
+        if (questionText) {
           // Calculate new abstraction level
           const newAbstractionLevel = type === 'practice' 
             ? promptState.abstractionLevel  // Keep same level for practice
@@ -182,7 +206,7 @@ export function usePrompt(initialPrompt: Prompt | null) {
             try {
               // Create clean data object without undefined values
               const newPromptData: any = {
-                text: parsedResponse.new_question,
+                text: questionText,
                 abstractionLevel: newAbstractionLevel,
               }
               
@@ -204,7 +228,7 @@ export function usePrompt(initialPrompt: Prompt | null) {
           // Update prompt state with new question
           setPromptState({
             id: newPromptId,
-            text: parsedResponse.new_question,
+            text: questionText,
             workings: parsedResponse.workings || null,
             answer: parsedResponse.answer || null,
             answerType: parsedResponse.answerType || initialPrompt?.answerType || null,
@@ -222,7 +246,7 @@ export function usePrompt(initialPrompt: Prompt | null) {
           
           return true // Success
         } else {
-          throw new Error('No new question found in response')
+          throw new Error(`No ${type === 'practice' ? 'new_question' : 'next_level_question'} found in response`)
         }
       } catch (parseError) {
         console.error(`Error parsing ${type} question response:`, parseError)
@@ -258,15 +282,21 @@ export function usePrompt(initialPrompt: Prompt | null) {
         questionGenerationError: null,
         isLoadingSolution: false,
         solutionError: null,
-        solution: null
+        solution: null,
+        requiresAuth: false
       })
     }
+  }
+
+  const clearAuthRequirement = () => {
+    setPromptState(prev => ({ ...prev, requiresAuth: false }))
   }
 
   return {
     promptState,
     solveQuestionWithAI,
     generateQuestion,
-    resetToOriginal
+    resetToOriginal,
+    clearAuthRequirement
   }
 }

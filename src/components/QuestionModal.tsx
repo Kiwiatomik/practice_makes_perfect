@@ -98,6 +98,7 @@ function QuestionModal({
       onHide={onHide}
       size="lg"
       centered
+      className="question-modal"
       aria-labelledby="question-modal-title"
       aria-describedby="question-modal-description"
     >

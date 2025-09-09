@@ -49,7 +49,7 @@ $spacers: (
 
 // Dark theme variables (explicit)
 [data-theme="dark"] {
-  --bs-primary: #{$primary-dark};
+  --bs-primary: #{$primary-dark} !important;
   --bg-color: #212121;
   --text-color: #FFFAFA;
   --card-bg: #2f3236;
@@ -60,7 +60,7 @@ $spacers: (
 
 // Light theme variables
 [data-theme="light"] {
-  --bs-primary: #{$primary-light};
+  --bs-primary: #{$primary-light} !important;
   --bg-color: #ffffff;
   --text-color: #212529;
   --card-bg: #f8f9fa;
@@ -70,7 +70,11 @@ $spacers: (
 }
 
 // Force Bootstrap buttons to use theme-aware colors
-.btn-primary {
+.btn-primary,
+.btn-primary:not(:disabled):not(.disabled),
+.btn-primary:not(:disabled):not(.disabled):active,
+.btn-primary:not(:disabled):not(.disabled).active,
+.show > .btn-primary.dropdown-toggle {
   background-color: var(--bs-primary) !important;
   border-color: var(--bs-primary) !important;
   color: #000000 !important;
@@ -78,11 +82,15 @@ $spacers: (
 
 .btn-primary:hover,
 .btn-primary:focus,
-.btn-primary:active {
+.btn-primary:active,
+.btn-primary:not(:disabled):not(.disabled):hover,
+.btn-primary:not(:disabled):not(.disabled):focus,
+.btn-primary:not(:disabled):not(.disabled):active:focus {
   background-color: var(--bs-primary) !important;
   border-color: var(--bs-primary) !important;
   color: #000000 !important;
   opacity: 0.9 !important;
+  box-shadow: none !important;
 }
 
 // Card styling
@@ -120,7 +128,6 @@ $spacers: (
   opacity: 0.7;
 }
 
-// Tag styling - inspired by Tailwind approach
 .badge.tag-easy {
   background-color: #{$success-light} !important;
   color: #{$success} !important;
@@ -218,3 +225,23 @@ $spacers: (
   color: var(--text-color) !important;
   opacity: 0.7 !important;
 }
+
+// Button links should use theme primary color
+.btn-link {
+  color: var(--bs-primary) !important;
+  text-decoration: none !important;
+}
+
+.btn-link:hover,
+.btn-link:focus,
+.btn-link:active {
+  color: var(--bs-primary) !important;
+  opacity: 0.8 !important;
+  text-decoration: none !important;
+}
+
+.btn-link:disabled {
+  color: var(--bs-primary) !important;
+  opacity: 0.5 !important;
+}
+

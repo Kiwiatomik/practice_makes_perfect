@@ -38,7 +38,7 @@ function Home() {
             top: '84px',
             left: 0,
             zIndex: 1040,
-            backgroundColor: 'var(--bs-dark)'
+            backgroundColor: 'var(--body-bg)'
           }}
         >
           <Container>

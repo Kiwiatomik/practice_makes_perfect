@@ -1,5 +1,5 @@
 import { useParams } from 'react-router'
-import { useCallback } from 'react'
+import { useCallback, useState, useEffect } from 'react'
 import Container from 'react-bootstrap/Container'
 import Row from 'react-bootstrap/Row'
 import Col from 'react-bootstrap/Col'
@@ -12,8 +12,11 @@ import { useModal } from '../hooks/useModal'
 import { useAuth } from '../contexts/AuthContext'
 import { coursesService } from '../services/coursesService'
 import QuestionModal from '../components/QuestionModal'
+import LoginModal from '../components/LoginModal'
+import RegisterModal from '../components/RegisterModal'
 import LoadingState from '../components/shared/LoadingState'
 import ErrorState from '../components/shared/ErrorState'
+import { useModalBlurEffect } from '../hooks/useModalBlurEffect'
 import { getDifficultyColor } from '../utils/badgeColors'
 import { sanitizeLessonError } from '../utils/errorSanitization'
 
@@ -23,10 +26,52 @@ function Lesson() {
   // Custom hooks
   const { currentUser } = useAuth()
   const { lesson, loading, error, firstPrompt, promptLoading, refetch } = useLesson(courseId, lessonId)
-  const { promptState, solveQuestionWithAI, generateQuestion, resetToOriginal } = usePrompt(firstPrompt)
+  const { promptState, solveQuestionWithAI, generateQuestion, resetToOriginal, clearAuthRequirement } = usePrompt(firstPrompt)
   const { modalState, showModal, hideModal, setUserAnswer, submitAnswer, resetForNewQuestion } = useModal()
+  
+  // Auth modal state
+  const [showLoginModal, setShowLoginModal] = useState(false)
+  const [showRegisterModal, setShowRegisterModal] = useState(false)
+  
+  // Apply blur effect when auth modals are shown
+  useModalBlurEffect({ show: showLoginModal || showRegisterModal })
+  
+  // Watch for authentication requirement
+  useEffect(() => {
+    if (promptState.requiresAuth && !currentUser) {
+      setShowLoginModal(true)
+    }
+  }, [promptState.requiresAuth, currentUser])
+  
+  // Clear auth requirement when user logs in
+  useEffect(() => {
+    if (currentUser && promptState.requiresAuth) {
+      clearAuthRequirement()
+      setShowLoginModal(false)
+      setShowRegisterModal(false)
+    }
+  }, [currentUser, promptState.requiresAuth, clearAuthRequirement])
 
-
+  // Auth modal handlers
+  const handleLoginModalClose = useCallback(() => {
+    setShowLoginModal(false)
+    clearAuthRequirement()
+  }, [clearAuthRequirement])
+  
+  const handleRegisterModalClose = useCallback(() => {
+    setShowRegisterModal(false)
+    clearAuthRequirement()
+  }, [clearAuthRequirement])
+  
+  const handleSwitchToRegister = useCallback(() => {
+    setShowLoginModal(false)
+    setShowRegisterModal(true)
+  }, [])
+  
+  const handleSwitchToLogin = useCallback(() => {
+    setShowRegisterModal(false)
+    setShowLoginModal(true)
+  }, [])
 
   // Helper function for generating questions with modal state reset
   const handleGenerateQuestion = useCallback(async (type: 'practice' | 'nextLevel') => {
@@ -48,6 +93,11 @@ function Lesson() {
     resetForNewQuestion()
     showModal()
   }, [resetToOriginal, resetForNewQuestion, showModal])
+
+  // Handle get solution with courseId and lessonId
+  const handleGetSolution = useCallback(() => {
+    solveQuestionWithAI(courseId, lessonId)
+  }, [solveQuestionWithAI, courseId, lessonId])
 
   // Handle answer submission
   const handleSubmitAnswer = useCallback(async () => {
@@ -77,7 +127,7 @@ function Lesson() {
     }
     
     // Automatically load solution after submitting answer
-    solveQuestionWithAI()
+    solveQuestionWithAI(courseId, lessonId)
   }, [submitAnswer, promptState.answer, promptState.answerType, promptState.abstractionLevel, currentUser, firstPrompt, courseId, lessonId, modalState.userAnswer, modalState.isCorrect, solveQuestionWithAI])
 
 
@@ -167,13 +217,26 @@ function Lesson() {
         onAnswerChange={setUserAnswer}
         onSubmitAnswer={handleSubmitAnswer}
         onGenerateQuestion={handleGenerateQuestion}
-        onGetSolution={solveQuestionWithAI}
+        onGetSolution={handleGetSolution}
         isGeneratingQuestion={promptState.isGeneratingQuestion}
         isLoadingSolution={promptState.isLoadingSolution}
         solutionError={promptState.solutionError}
         solution={promptState.solution}
         workings={promptState.workings}
         aria-labelledby="lesson-title"
+      />
+
+      {/* Authentication Modals */}
+      <LoginModal
+        show={showLoginModal}
+        onHide={handleLoginModalClose}
+        onSwitchToRegister={handleSwitchToRegister}
+      />
+      
+      <RegisterModal
+        show={showRegisterModal}
+        onHide={handleRegisterModalClose}
+        onSwitchToLogin={handleSwitchToLogin}
       />
     </Container>
   )

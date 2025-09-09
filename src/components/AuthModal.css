@@ -93,6 +93,18 @@
   transition: filter 0.3s ease-in-out;
 }
 
+/* Blur Question Modal when auth modal is shown */
+body.modal-blur-active .question-modal .modal-content {
+  filter: blur(3px);
+  transition: filter 0.3s ease-in-out;
+}
+
+/* Darken Question Modal in light mode when auth modal is shown */
+[data-theme="light"] body.modal-blur-active .question-modal .modal-content {
+  filter: blur(3px) brightness(0.6);
+  transition: filter 0.3s ease-in-out;
+}
+
 body.modal-scroll-lock {
   overflow: hidden;
 }
@@ -113,4 +125,79 @@ body.modal-scroll-lock {
   background-color: rgba(248, 215, 218, 1);
   border-color: rgba(245, 198, 203, 1);
   color: #721c24;
+}
+
+/* Autocomplete styling fixes */
+.auth-modal input:-webkit-autofill,
+.auth-modal input:-webkit-autofill:hover,
+.auth-modal input:-webkit-autofill:focus,
+.auth-modal input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 30px var(--input-bg) inset !important;
+  -webkit-text-fill-color: var(--input-text) !important;
+  color: var(--input-text) !important;
+  background-color: var(--input-bg) !important;
+  font-size: inherit !important;
+  font-family: inherit !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+/* Firefox autocomplete styling */
+.auth-modal input:-moz-autofill {
+  background-color: var(--input-bg) !important;
+  color: var(--input-text) !important;
+  font-size: inherit !important;
+}
+
+/* General autocomplete dropdown styling */
+.auth-modal input::-webkit-credentials-auto-fill-button {
+  visibility: hidden;
+  display: none !important;
+  pointer-events: none;
+  height: 0;
+  width: 0;
+  margin: 0;
+}
+
+/* Autocomplete dropdown suggestions styling */
+.auth-modal input::-webkit-list-button {
+  display: none;
+}
+
+/* Try to override browser autocomplete dropdown styles */
+input[list]::-webkit-calendar-picker-indicator {
+  display: none;
+}
+
+/* Custom styling for autocomplete suggestions - this targets the dropdown */
+.auth-modal input {
+  font-size: 1rem !important;
+  font-family: var(--bs-font-sans-serif) !important;
+  font-weight: normal !important;
+}
+
+/* Override any browser font changes on hover/focus */
+.auth-modal input:hover,
+.auth-modal input:focus {
+  font-size: 1rem !important;
+  font-family: var(--bs-font-sans-serif) !important;
+  font-weight: normal !important;
+  color: var(--input-text) !important;
+  background-color: var(--input-bg) !important;
+}
+
+/* Fix input field styling consistency with autocomplete */
+.auth-modal input:-webkit-autofill,
+.auth-modal input:-webkit-autofill:hover,
+.auth-modal input:-webkit-autofill:focus,
+.auth-modal input:-webkit-autofill:active {
+  /* Keep consistent font properties */
+  font-size: 1rem !important;
+  font-family: var(--bs-font-sans-serif) !important;
+  font-weight: 400 !important;
+  /* Maintain theme colors */
+  -webkit-text-fill-color: var(--input-text) !important;
+  /* Override browser's background with theme background */
+  -webkit-box-shadow: 0 0 0 30px var(--input-bg) inset !important;
+  /* Prevent browser transition animations */
+  transition: background-color 5000s ease-in-out 0s !important;
 }

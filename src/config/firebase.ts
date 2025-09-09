@@ -1,6 +1,7 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, connectAuthEmulator } from 'firebase/auth';
 import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
+import { getFunctions, connectFunctionsEmulator } from 'firebase/functions';
 
 interface FirebaseConfig {
   apiKey: string;
@@ -38,17 +39,20 @@ const validateFirebaseConfig = (): FirebaseConfig => {
 let firebaseApp;
 let auth;
 let db;
+let functions;
 
 try {
   const firebaseConfig = validateFirebaseConfig();
   firebaseApp = initializeApp(firebaseConfig);
   auth = getAuth(firebaseApp);
   db = getFirestore(firebaseApp);
+  functions = getFunctions(firebaseApp);
 
   if (import.meta.env.DEV && import.meta.env.VITE_USE_FIREBASE_EMULATOR === 'true') {
     try {
       connectAuthEmulator(auth, 'http://localhost:9099', { disableWarnings: true });
       connectFirestoreEmulator(db, 'localhost', 8080);
+      connectFunctionsEmulator(functions, 'localhost', 5001);
     } catch (error) {
       console.warn('Firebase emulators already connected or unavailable');
     }
@@ -58,5 +62,5 @@ try {
   throw error;
 }
 
-export { auth, db };
+export { auth, db, functions };
 export default firebaseApp;

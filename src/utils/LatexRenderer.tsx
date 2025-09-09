@@ -12,7 +12,7 @@ export class LatexRenderer {
 
     try {
       // Split content by LaTeX delimiters while preserving them
-      const parts = content.split(/(\$\$[\s\S]*?\$\$|\\\[[\s\S]*?\\\]|\\\([\s\S]*?\\\))/)
+      const parts = content.split(/(\$\$[\s\S]*?\$\$|\\\[[\s\S]*?\\\]|\\\([\s\S]*?\\\)|`[^`]+`)/)
       
       // Process each part and collect the results
       const renderedParts: React.ReactNode[] = []
@@ -34,6 +34,10 @@ export class LatexRenderer {
           } else if (part.startsWith('\\(') && part.endsWith('\\)')) {
             // Inline math: \( ... \)
             const math = part.slice(2, -2)
+            renderedParts.push(<InlineMath key={i} math={math} />)
+          } else if (part.startsWith('`') && part.endsWith('`')) {
+            // Inline math with backticks: `...`
+            const math = part.slice(1, -1)
             renderedParts.push(<InlineMath key={i} math={math} />)
           } else {
             // Regular text - only add if it's not whitespace only

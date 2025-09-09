@@ -288,7 +288,7 @@ const Account = () => {
             </div>
           
           {/* Current Account Info */}
-          <Card className="mb-4" data-bs-theme={theme}>
+          <Card className="mb-4">
             <Card.Header>
               <h5 className="mb-0">Account Information</h5>
             </Card.Header>
@@ -299,25 +299,23 @@ const Account = () => {
                 {currentUser.emailVerified ? (
                   <span className="text-success">✓ Verified</span>
                 ) : (
-                  <>
-                    <span className="text-warning">✗ Not Verified</span>
-                    <Button
-                      variant="link"
-                      size="sm"
-                      className="p-0 ms-2"
-                      disabled={loading.verification}
-                      onClick={handleSendVerification}
-                    >
-                      {loading.verification ? (
-                        <>
-                          <Spinner size="sm" className="me-1" />
-                          Sending...
-                        </>
-                      ) : (
-                        'Send Verification Email'
-                      )}
-                    </Button>
-                  </>
+                  <span
+                    style={{ 
+                      color: 'var(--bs-primary)', 
+                      cursor: loading.verification ? 'default' : 'pointer',
+                      opacity: loading.verification ? 0.6 : 1
+                    }}
+                    onClick={loading.verification ? undefined : handleSendVerification}
+                  >
+                    {loading.verification ? (
+                      <>
+                        <Spinner size="sm" className="me-1" />
+                        Sending...
+                      </>
+                    ) : (
+                      'Send Verification Email'
+                    )}
+                  </span>
                 )}
               </p>
               <p>
@@ -367,7 +365,7 @@ const Account = () => {
           )}
 
           {/* Change Email */}
-          <Card className="mb-4" data-bs-theme={theme}>
+          <Card className="mb-4">
             <Card.Header>
               <h5 className="mb-0">Change Email Address</h5>
             </Card.Header>
@@ -432,7 +430,7 @@ const Account = () => {
           )}
 
           {/* Change Password */}
-          <Card className="mb-4" data-bs-theme={theme}>
+          <Card className="mb-4">
             <Card.Header>
               <h5 className="mb-0">Change Password</h5>
             </Card.Header>
@@ -512,7 +510,7 @@ const Account = () => {
           )}
 
           {/* Delete Account */}
-          <Card className="mb-4 border-danger" data-bs-theme={theme}>
+          <Card className="mb-4 border-danger">
             <Card.Header className="bg-danger">
               <h5 className="mb-0 text-white">Danger Zone</h5>
             </Card.Header>
