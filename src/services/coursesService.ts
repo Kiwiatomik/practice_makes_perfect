@@ -13,9 +13,9 @@ import {
   DocumentData,
   QueryDocumentSnapshot,
   FirestoreError,
-  Timestamp,
+  // Timestamp,
   serverTimestamp,
-  DocumentReference
+  // DocumentReference
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { Course, Lesson, User, Prompt, UserAnswer } from '../types';
@@ -67,7 +67,7 @@ const convertDocumentToCourse = (doc: QueryDocumentSnapshot<DocumentData>): Cour
     level: data.level || 'Bachelor',
     subject: data.subject || '',
     tags: Array.isArray(data.tags) ? data.tags : [],
-    lessons: [], // Lessons will be fetched separately from subcollection
+    // lessons: [], // Lessons will be fetched separately from subcollection
     isPublic: data.isPublic !== false
   };
 };
@@ -186,7 +186,7 @@ export const coursesService = {
       // Fetch lessons from subcollection
       try {
         const lessons = await this.getLessonsByCourseId(courseId);
-        course = { ...course, lessons };
+        // course = { ...course, lessons }; // Lessons not included in Course interface
       } catch (error) {
         console.warn('Could not fetch lessons for course:', courseId, error);
         // Continue with empty lessons array

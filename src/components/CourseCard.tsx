@@ -2,7 +2,7 @@ import Card from 'react-bootstrap/Card'
 import Badge from 'react-bootstrap/Badge'
 import { Link } from 'react-router'
 import { Course } from '../types'
-import { getLevelColor } from '../utils/badgeColors'
+// import { getLevelColor } from '../utils/badgeColors'
 
 interface CourseCardProps {
   course: Course

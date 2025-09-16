@@ -120,7 +120,8 @@ const LoginModal = ({ show, onHide, onSwitchToRegister }: LoginModalProps) => {
       let errorMessage = 'Failed to send password reset email'
       
       if (err instanceof Error) {
-        switch (err.code || err.message) {
+        const firebaseError = err as any;
+        switch (firebaseError.code || err.message) {
           case 'auth/user-not-found':
             errorMessage = 'No account found with this email address'
             break
@@ -165,7 +166,8 @@ const LoginModal = ({ show, onHide, onSwitchToRegister }: LoginModalProps) => {
       
       if (err instanceof Error) {
         // Handle specific Firebase errors
-        switch (err.code || err.message) {
+        const firebaseError = err as any;
+        switch (firebaseError.code || err.message) {
           case 'auth/popup-closed-by-user':
             errorMessage = 'Sign-in cancelled'
             break

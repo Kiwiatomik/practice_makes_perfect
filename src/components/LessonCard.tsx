@@ -5,7 +5,7 @@ import Row from 'react-bootstrap/Row'
 import Col from 'react-bootstrap/Col'
 import { Link } from 'react-router'
 import { Lesson } from '../types'
-import { getDifficultyColor } from '../utils/badgeColors'
+// import { getDifficultyColor } from '../utils/badgeColors'
 
 interface LessonCardProps {
   lesson: Lesson
@@ -46,7 +46,7 @@ function LessonCard({
                   {lesson.title}
                 </Link>
               </Card.Title>
-              <Badge className={`tag-${lesson.difficulty.toLowerCase()}`} size="sm">
+              <Badge className={`tag-${lesson.difficulty.toLowerCase()}`}>
                 {lesson.difficulty}
               </Badge>
             </div>
@@ -55,14 +55,12 @@ function LessonCard({
             </Card.Text>
           </Col>
           <Col md={showNumber ? 5 : 4} className="text-end">
-            <Button
-              as={Link}
-              to={`/course/${courseId}/lesson/${lesson.id}`}
-              variant={lesson.isCompleted ? 'outline-success' : 'primary'}
-              size="sm"
+            <Link 
+              to={`/course/${courseId}/lesson/${lesson.id}`} 
+              className={`btn ${lesson.isCompleted ? 'btn-outline-success' : 'btn-primary'}`}
             >
               {lesson.isCompleted ? 'Review' : 'Start'}
-            </Button>
+            </Link>
           </Col>
         </Row>
       </Card.Body>

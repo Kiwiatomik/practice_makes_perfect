@@ -36,10 +36,10 @@ const validateFirebaseConfig = (): FirebaseConfig => {
   return config as FirebaseConfig;
 };
 
-let firebaseApp;
-let auth;
-let db;
-let functions;
+let firebaseApp: any;
+let auth: any;
+let db: any;
+let functions: any;
 
 try {
   const firebaseConfig = validateFirebaseConfig();
