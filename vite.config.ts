@@ -7,6 +7,8 @@ export default defineConfig({
   css: {
     preprocessorOptions: {
       scss: {
+        // Suppress deprecation warnings from Bootstrap's internal usage
+        silenceDeprecations: ['import', 'global-builtin', 'color-functions'],
         quietDeps: true
       }
     }

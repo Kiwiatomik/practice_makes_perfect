@@ -186,10 +186,10 @@ export const coursesService = {
       // Fetch lessons from subcollection
       try {
         const lessons = await this.getLessonsByCourseId(courseId);
-        // course = { ...course, lessons }; // Lessons not included in Course interface
+        course = { ...course, lessons };
       } catch (error) {
         console.warn('Could not fetch lessons for course:', courseId, error);
-        // Continue with empty lessons array
+        course = { ...course, lessons: [] };
       }
       
       return course;

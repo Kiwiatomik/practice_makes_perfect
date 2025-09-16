@@ -55,7 +55,7 @@ function CoursePage() {
             
             <Row className="mb-4">
               <Col md={6}>
-                <CourseProgressBar lessons={course.lessons} />
+                <CourseProgressBar lessons={course.lessons || []} />
               </Col>
               <Col md={6}>
                 <div className="text-md-end">
@@ -70,8 +70,8 @@ function CoursePage() {
           
           <Row className="g-3">
             {course.lessons
-              .sort((a, b) => a.order - b.order)
-              .map((lesson, index) => (
+              ?.sort((a, b) => a.order - b.order)
+              ?.map((lesson, index) => (
                 <Col key={lesson.id} xs={12}>
                   <LessonCard 
                     lesson={lesson}

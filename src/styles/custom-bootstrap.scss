@@ -1,9 +1,5 @@
-// Custom Bootstrap variable overrides
+// Custom theme color variables
 $primary-dark: #ffd334;
-$dark: #212121;
-$light: #ffffff;
-
-// Set primary button text color to black
 $primary-light: #FF4A03;
 
 // Tag color variables
@@ -17,8 +13,7 @@ $alert-light: #fef2f2;
 $alert-dark: #7f1d1d;
 $alert-text-dark: #FA5053;
 
-
-// Custom spacing (adjust default paddings)
+// Custom spacing
 $spacer: 1rem;
 $spacers: (
   0: 0,
@@ -29,14 +24,24 @@ $spacers: (
   5: $spacer * 3,
 );
 
-// Import Bootstrap
-@import "bootstrap/scss/bootstrap";
+// Import required Sass modules
+@use "sass:color";
+@use "sass:map";
+
+// Import Bootstrap with variable overrides
+@use "bootstrap/scss/bootstrap" with (
+  $primary: $primary-light,
+  $dark: #212121,
+  $light: #ffffff,
+  $spacer: $spacer,
+  $spacers: $spacers
+);
 
 // Theme variables - Light mode as default
 :root {
   --bs-primary: #{$primary-light};
-  --bs-dark: #{$dark};
-  --bs-light: #{$light};
+  --bs-dark: #212121;
+  --bs-light: #ffffff;
   
   // Light theme colors (default)
   --bg-color: #ffffff;
