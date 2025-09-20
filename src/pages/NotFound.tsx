@@ -14,10 +14,10 @@ function NotFound() {
           The page you're looking for doesn't exist.
         </p>
         <div className="d-flex justify-content-center gap-2">
-          <Button as={Link} to="/" variant="primary">
+          <Button as={Link as any} to="/" variant="primary">
             Go Home
           </Button>
-          <Button as={Link} to="/courses" variant="outline-primary">
+          <Button as={Link as any} to="/courses" variant="outline-primary">
             Browse Courses
           </Button>
         </div>

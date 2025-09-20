@@ -13,7 +13,11 @@ const CoursePage = lazy(() => import('./pages/CoursePage'))
 const Account = lazy(() => import('./pages/Account'))
 const CreateCourse = lazy(() => import('./pages/CreateCourse'))
 const CreateLesson = lazy(() => import('./pages/CreateLesson'))
+const Health = lazy(() => import('./pages/Health'))
 const NotFound = lazy(() => import('./pages/NotFound'))
+
+// Health check endpoints (non-lazy for faster response)
+import { HealthEndpoint, ReadinessEndpoint, LivenessEndpoint } from './pages/HealthCheck'
 import './styles/custom-bootstrap.scss'
 
 function App() {
@@ -22,6 +26,13 @@ function App() {
       <Navigation />
       <Suspense fallback={<LoadingState message="Loading page..." />}>
         <Routes>
+          {/* Health check endpoints for load balancers */}
+          <Route path="/health" element={<HealthEndpoint />} />
+          <Route path="/health/ready" element={<ReadinessEndpoint />} />
+          <Route path="/health/live" element={<LivenessEndpoint />} />
+          <Route path="/health/status" element={<Health />} />
+
+          {/* Application routes */}
           <Route path="/" element={<Home />} />
           <Route path="/dashboard" element={
             <ProtectedRoute>

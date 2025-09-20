@@ -105,7 +105,7 @@ function CreateCourse() {
         }
       }
       
-      const courseId = await coursesService.createCourse(courseData)
+      await coursesService.createCourse(courseData)
       setSuccess(true)
       
       // Return to courses list after success
@@ -179,7 +179,7 @@ function CreateCourse() {
                             {course.level}
                           </Badge>
                           <small className="text-muted">
-                            {course.lessons?.length || 0} lessons
+                            {(course as any).lessons?.length || 0} lessons
                           </small>
                         </div>
                         <Card.Title>
@@ -195,8 +195,8 @@ function CreateCourse() {
                         </Card.Text>
                         <div className="d-flex justify-content-between align-items-center">
                           <Badge bg="secondary">{course.subject}</Badge>
-                          <Button 
-                            as={Link}
+                          <Button
+                            as={Link as any}
                             to={`/course/${course.id}`}
                             variant="outline-primary" 
                             size="sm"

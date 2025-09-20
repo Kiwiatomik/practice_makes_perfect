@@ -32,7 +32,7 @@ function ErrorState({
             </Button>
           )}
           {backLink && (
-            <Button as={Link} to={backLink} variant="secondary">
+            <Button as={Link as any} to={backLink} variant="secondary">
               {backText}
             </Button>
           )}

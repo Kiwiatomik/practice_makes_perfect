@@ -15,25 +15,27 @@ vi.mock('../contexts/AuthContext', () => ({
 }))
 
 // Mock react-bootstrap/Container
-vi.mock('react-bootstrap/Container', () => {
-  const React = require('react')
+vi.mock('react-bootstrap/Container', async () => {
+  const React = await import('react')
+  const MockContainer = React.forwardRef(({ children, className, ...props }: { children?: React.ReactNode; className?: string; [key: string]: any }, ref: any) => (
+    React.createElement('div', {
+      ref,
+      'data-testid': 'container',
+      className,
+      ...props
+    }, children)
+  ))
+  MockContainer.displayName = 'MockContainer'
   return {
-    default: React.forwardRef<HTMLDivElement, { children?: React.ReactNode; className?: string; [key: string]: any }>(({ children, className, ...props }, ref) => (
-      React.createElement('div', {
-        ref,
-        'data-testid': 'container',
-        className,
-        ...props
-      }, children)
-    ))
+    default: MockContainer
   }
 })
 
 // Mock react-bootstrap/Alert
-vi.mock('react-bootstrap/Alert', () => {
-  const React = require('react')
+vi.mock('react-bootstrap/Alert', async () => {
+  const React = await import('react')
   
-  const MockAlert = React.forwardRef<HTMLDivElement, { children?: React.ReactNode; variant?: string; className?: string; [key: string]: any }>(({ children, variant, className, ...props }, ref) => (
+  const MockAlert = React.forwardRef(({ children, variant, className, ...props }: { children?: React.ReactNode; variant?: string; className?: string; [key: string]: any }, ref: any) => (
     React.createElement('div', {
       ref,
       'data-testid': 'alert',
@@ -42,29 +44,35 @@ vi.mock('react-bootstrap/Alert', () => {
       ...props
     }, children)
   ))
+  MockAlert.displayName = 'MockAlert'
+
+  const MockAlertHeading = ({ children, ...props }: any) =>
+    React.createElement('h4', { 'data-testid': 'alert-heading', ...props }, children)
+  MockAlertHeading.displayName = 'MockAlertHeading'
 
   Object.assign(MockAlert, {
-    Heading: ({ children, ...props }: any) => 
-      React.createElement('h4', { 'data-testid': 'alert-heading', ...props }, children)
+    Heading: MockAlertHeading
   })
 
   return { default: MockAlert }
 })
 
 // Mock react-bootstrap/Button
-vi.mock('react-bootstrap/Button', () => {
-  const React = require('react')
+vi.mock('react-bootstrap/Button', async () => {
+  const React = await import('react')
+  const MockButton = React.forwardRef(({ children, variant, onClick, className, ...props }: { children?: React.ReactNode; variant?: string; onClick?: () => void; className?: string; [key: string]: any }, ref: any) =>
+    React.createElement('button', {
+      ref,
+      'data-testid': 'button',
+      'data-variant': variant,
+      className,
+      onClick,
+      ...props
+    }, children)
+  )
+  MockButton.displayName = 'MockButton'
   return {
-    default: React.forwardRef<HTMLButtonElement, { children?: React.ReactNode; variant?: string; onClick?: () => void; className?: string; [key: string]: any }>(({ children, variant, onClick, className, ...props }, ref) => 
-      React.createElement('button', {
-        ref,
-        'data-testid': 'button',
-        'data-variant': variant,
-        className,
-        onClick,
-        ...props
-      }, children)
-    )
+    default: MockButton
   }
 })
 
@@ -80,6 +88,7 @@ Object.defineProperty(window, 'location', {
 
 // Test child component
 const TestChild = () => <div data-testid="protected-content">Protected Content</div>
+TestChild.displayName = 'TestChild'
 
 describe('ProtectedRoute', () => {
   beforeEach(() => {
@@ -400,7 +409,7 @@ describe('ProtectedRoute', () => {
 
       const customPaths = ['/login', '/signin', '/auth', '/welcome']
 
-      customPaths.forEach((path, index) => {
+      customPaths.forEach((path) => {
         const mockHrefSetter = vi.fn()
         Object.defineProperty(window, 'location', {
           value: {

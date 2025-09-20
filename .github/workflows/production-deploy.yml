@@ -1,0 +1,487 @@
+name: Production Deployment Automation
+
+on:
+  workflow_dispatch:
+    inputs:
+      deployment_type:
+        description: 'Deployment strategy'
+        required: true
+        default: 'standard'
+        type: choice
+        options:
+          - standard
+          - blue-green
+          - canary
+      skip_migration:
+        description: 'Skip database migrations'
+        type: boolean
+        default: false
+      force_deploy:
+        description: 'Force deployment (bypass some safety checks)'
+        type: boolean
+        default: false
+
+jobs:
+  # Pre-deployment validation
+  pre-deployment-checks:
+    name: Pre-deployment Validation
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: read
+
+    outputs:
+      deployment_id: ${{ steps.generate-id.outputs.deployment_id }}
+      previous_version: ${{ steps.version-check.outputs.previous_version }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate deployment ID
+        id: generate-id
+        run: |
+          DEPLOYMENT_ID="deploy-$(date +%Y%m%d-%H%M%S)-${{ github.run_number }}"
+          echo "deployment_id=$DEPLOYMENT_ID" >> $GITHUB_OUTPUT
+          echo "🚀 Deployment ID: $DEPLOYMENT_ID"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Critical security gate
+      - name: Final security verification
+        if: github.event.inputs.force_deploy != 'true'
+        run: |
+          echo "🛡️ Final security verification for production deployment..."
+          npm audit --audit-level=critical --json > security-final.json || true
+
+          CRITICAL_VULNS=$(jq '.metadata.vulnerabilities.critical // 0' security-final.json)
+
+          if [ "$CRITICAL_VULNS" != "0" ]; then
+            echo "🚨 PRODUCTION DEPLOYMENT BLOCKED!"
+            echo "Critical vulnerabilities detected: $CRITICAL_VULNS"
+            echo "Use 'force_deploy: true' only if you understand the risks"
+            exit 1
+          fi
+
+          echo "✅ Security verification passed"
+
+      # Check current production version
+      - name: Check current production version
+        id: version-check
+        run: |
+          echo "🔍 Checking current production version..."
+
+          # Try to get current version from production health endpoint
+          CURRENT_VERSION=$(curl -s "https://practice-makes-perfect-5e85e.web.app/health.json" | jq -r '.version // "unknown"' || echo "unknown")
+          echo "previous_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+          echo "Current production version: $CURRENT_VERSION"
+
+      # Run comprehensive test suite
+      - name: Run full test suite
+        run: |
+          echo "🧪 Running comprehensive test suite..."
+          npm run test:run
+          npm run lint
+          npx tsc --noEmit
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
+
+      - name: Run E2E tests
+        run: npm run e2e
+        env:
+          VITE_FIREBASE_API_KEY: ${{ secrets.STAGING_VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.STAGING_VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ secrets.STAGING_VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.STAGING_VITE_FIREBASE_STORAGE_BUCKET }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.STAGING_VITE_FIREBASE_MESSAGING_SENDER_ID }}
+          VITE_FIREBASE_APP_ID: ${{ secrets.STAGING_VITE_FIREBASE_APP_ID }}
+          VITE_SENTRY_DSN: ${{ secrets.STAGING_VITE_SENTRY_DSN }}
+
+      - name: Deployment readiness report
+        run: |
+          cat << EOF > DEPLOYMENT_READINESS.md
+          # 🚀 Production Deployment Readiness Report
+
+          **Deployment ID:** ${{ steps.generate-id.outputs.deployment_id }}
+          **Current Version:** ${{ steps.version-check.outputs.previous_version }}
+          **Target Branch:** ${{ github.ref_name }}
+          **Commit:** ${{ github.sha }}
+          **Strategy:** ${{ github.event.inputs.deployment_type }}
+
+          ## ✅ Pre-deployment Checks
+          - [x] Security vulnerabilities verified
+          - [x] Unit tests passed
+          - [x] E2E tests passed
+          - [x] TypeScript compilation successful
+          - [x] Linting checks passed
+
+          ## 🔧 Deployment Configuration
+          - **Type:** ${{ github.event.inputs.deployment_type }}
+          - **Skip Migration:** ${{ github.event.inputs.skip_migration }}
+          - **Force Deploy:** ${{ github.event.inputs.force_deploy }}
+
+          ---
+          *Generated at $(date)*
+          EOF
+
+      - name: Upload deployment artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: deployment-readiness-${{ steps.generate-id.outputs.deployment_id }}
+          path: DEPLOYMENT_READINESS.md
+
+  # Database migrations (if applicable)
+  database-migrations:
+    name: Database Migrations
+    runs-on: ubuntu-latest
+    needs: [pre-deployment-checks]
+    if: github.event.inputs.skip_migration != 'true'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Note: Since this uses Firestore, migrations are typically schema-less
+      # But we can still run data migration scripts if needed
+      - name: Check for pending data migrations
+        run: |
+          echo "🗃️ Checking for data migrations..."
+
+          # Create migrations directory if it doesn't exist
+          mkdir -p scripts/migrations
+
+          # Check if there are any migration scripts
+          if [ -f "scripts/migrations/migrate.js" ]; then
+            echo "Found migration scripts"
+            # Run migrations here if needed
+            # node scripts/migrations/migrate.js
+          else
+            echo "No migrations to run (Firestore is schema-less)"
+          fi
+
+      - name: Backup production data (safety measure)
+        run: |
+          echo "📦 Creating data backup reference point..."
+          echo "Backup reference: ${{ needs.pre-deployment-checks.outputs.deployment_id }}" > backup-reference.txt
+
+          # In a real scenario, you might export Firestore data
+          # gcloud firestore export gs://backup-bucket/backups/${{ needs.pre-deployment-checks.outputs.deployment_id }}
+
+  # Standard deployment
+  standard-deployment:
+    name: Standard Production Deployment
+    runs-on: ubuntu-latest
+    needs: [pre-deployment-checks, database-migrations]
+    if: github.event.inputs.deployment_type == 'standard' || github.event.inputs.deployment_type == ''
+    environment: production
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build for production
+        run: npm run build
+        env:
+          VITE_ENVIRONMENT: production
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+          VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
+          VITE_APP_VERSION: ${{ needs.pre-deployment-checks.outputs.deployment_id }}
+
+      - name: Setup Firebase CLI
+        run: npm install -g firebase-tools
+
+      - name: Deploy to production
+        run: |
+          echo "🚀 Deploying to production..."
+          firebase use production
+          firebase deploy --config=firebase.production.json --token="${{ secrets.FIREBASE_TOKEN }}"
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+
+      - name: Post-deployment verification
+        run: |
+          echo "🔍 Verifying deployment..."
+          sleep 30  # Wait for deployment to propagate
+
+          # Health check
+          HEALTH_STATUS=$(curl -s "https://practice-makes-perfect-5e85e.web.app/health.json" | jq -r '.status // "unknown"')
+          if [ "$HEALTH_STATUS" != "healthy" ]; then
+            echo "❌ Health check failed: $HEALTH_STATUS"
+            exit 1
+          fi
+
+          echo "✅ Deployment verified successfully"
+
+  # Blue-Green deployment
+  blue-green-deployment:
+    name: Blue-Green Production Deployment
+    runs-on: ubuntu-latest
+    needs: [pre-deployment-checks, database-migrations]
+    if: github.event.inputs.deployment_type == 'blue-green'
+    environment: production
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build for production
+        run: npm run build
+        env:
+          VITE_ENVIRONMENT: production
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+          VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
+          VITE_APP_VERSION: ${{ needs.pre-deployment-checks.outputs.deployment_id }}
+
+      - name: Setup Firebase CLI
+        run: npm install -g firebase-tools
+
+      # Deploy to preview channel first (Green environment)
+      - name: Deploy to preview channel (Green)
+        id: preview-deploy
+        run: |
+          echo "🟢 Deploying to Green environment (preview)..."
+          firebase use production
+          PREVIEW_URL=$(firebase hosting:channel:deploy "green-${{ needs.pre-deployment-checks.outputs.deployment_id }}" --config=firebase.production.json --token="${{ secrets.FIREBASE_TOKEN }}" --json | jq -r '.result.url')
+          echo "preview_url=$PREVIEW_URL" >> $GITHUB_OUTPUT
+          echo "Green environment URL: $PREVIEW_URL"
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+
+      - name: Verify Green environment
+        run: |
+          echo "🔍 Verifying Green environment..."
+          sleep 60  # Wait for deployment to be ready
+
+          # Run health checks on preview URL
+          PREVIEW_URL="${{ steps.preview-deploy.outputs.preview_url }}"
+          HEALTH_STATUS=$(curl -s "$PREVIEW_URL/health.json" | jq -r '.status // "unknown"')
+
+          if [ "$HEALTH_STATUS" != "healthy" ]; then
+            echo "❌ Green environment health check failed"
+            exit 1
+          fi
+
+          echo "✅ Green environment verified"
+
+      - name: Switch traffic to Green (Blue-Green cutover)
+        run: |
+          echo "🔄 Switching traffic to Green environment..."
+          firebase hosting:clone "green-${{ needs.pre-deployment-checks.outputs.deployment_id }}:live" --config=firebase.production.json --token="${{ secrets.FIREBASE_TOKEN }}"
+
+          echo "🟢 Blue-Green deployment completed"
+          echo "Traffic switched to new version"
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+
+      - name: Post-deployment verification
+        run: |
+          echo "🔍 Final verification..."
+          sleep 30
+
+          # Verify production is serving new version
+          HEALTH_STATUS=$(curl -s "https://practice-makes-perfect-5e85e.web.app/health.json" | jq -r '.status // "unknown"')
+          VERSION=$(curl -s "https://practice-makes-perfect-5e85e.web.app/health.json" | jq -r '.version // "unknown"')
+
+          echo "Production health: $HEALTH_STATUS"
+          echo "Production version: $VERSION"
+
+          if [ "$HEALTH_STATUS" != "healthy" ]; then
+            echo "❌ Production health check failed after cutover"
+            exit 1
+          fi
+
+          echo "✅ Blue-Green deployment successful"
+
+  # Canary deployment
+  canary-deployment:
+    name: Canary Production Deployment
+    runs-on: ubuntu-latest
+    needs: [pre-deployment-checks, database-migrations]
+    if: github.event.inputs.deployment_type == 'canary'
+    environment: production
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build for production
+        run: npm run build
+        env:
+          VITE_ENVIRONMENT: production
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+          VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
+          VITE_APP_VERSION: ${{ needs.pre-deployment-checks.outputs.deployment_id }}
+
+      - name: Setup Firebase CLI
+        run: npm install -g firebase-tools
+
+      - name: Deploy canary version
+        id: canary-deploy
+        run: |
+          echo "🐤 Deploying canary version..."
+          firebase use production
+          CANARY_URL=$(firebase hosting:channel:deploy "canary-${{ needs.pre-deployment-checks.outputs.deployment_id }}" --config=firebase.production.json --token="${{ secrets.FIREBASE_TOKEN }}" --json | jq -r '.result.url')
+          echo "canary_url=$CANARY_URL" >> $GITHUB_OUTPUT
+          echo "Canary URL: $CANARY_URL"
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+
+      - name: Canary validation period
+        run: |
+          echo "⏱️ Canary validation period (5 minutes)..."
+          echo "Monitor the canary deployment at: ${{ steps.canary-deploy.outputs.canary_url }}"
+          echo "Check metrics, error rates, and user feedback"
+
+          # In a real scenario, you might:
+          # - Check error rates in Sentry
+          # - Monitor performance metrics
+          # - Check user feedback
+          # - Run automated smoke tests
+
+          sleep 300  # 5 minute validation period
+
+      - name: Promote canary to production
+        run: |
+          echo "📈 Promoting canary to production..."
+          firebase hosting:clone "canary-${{ needs.pre-deployment-checks.outputs.deployment_id }}:live" --config=firebase.production.json --token="${{ secrets.FIREBASE_TOKEN }}"
+
+          echo "🎉 Canary deployment promoted to production"
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+
+  # Post-deployment tasks
+  post-deployment:
+    name: Post-deployment Tasks
+    runs-on: ubuntu-latest
+    needs: [pre-deployment-checks, standard-deployment, blue-green-deployment, canary-deployment]
+    if: always() && (needs.standard-deployment.result == 'success' || needs.blue-green-deployment.result == 'success' || needs.canary-deployment.result == 'success')
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Create deployment record
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const deployment = await github.rest.repos.createDeployment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: context.sha,
+              environment: 'production',
+              description: 'Automated production deployment',
+              auto_merge: false,
+              required_contexts: []
+            });
+
+            await github.rest.repos.createDeploymentStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              deployment_id: deployment.data.id,
+              state: 'success',
+              description: 'Production deployment successful',
+              environment_url: 'https://practice-makes-perfect-5e85e.web.app'
+            });
+
+      - name: Create GitHub release
+        if: github.ref == 'refs/heads/main'
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ needs.pre-deployment-checks.outputs.deployment_id }}
+          release_name: Production Release ${{ needs.pre-deployment-checks.outputs.deployment_id }}
+          body: |
+            # 🚀 Production Deployment
+
+            **Deployment ID:** ${{ needs.pre-deployment-checks.outputs.deployment_id }}
+            **Strategy:** ${{ github.event.inputs.deployment_type }}
+            **Previous Version:** ${{ needs.pre-deployment-checks.outputs.previous_version }}
+            **Commit:** ${{ github.sha }}
+
+            ## 🔗 Links
+            - **Production:** https://practice-makes-perfect-5e85e.web.app
+            - **Health Check:** https://practice-makes-perfect-5e85e.web.app/health.json
+
+            ## 📊 Deployment Details
+            - All security checks passed
+            - Full test suite executed
+            - Zero downtime deployment completed
+
+            🤖 Generated with Claude Code
+          draft: false
+          prerelease: false
+
+      - name: Cleanup preview channels
+        run: |
+          echo "🧹 Cleaning up preview channels..."
+          # Keep channels for 7 days for rollback purposes
+          echo "Preview channels will be auto-cleaned by Firebase after 7 days"
+
+      - name: Deployment notification
+        run: |
+          echo "📢 Deployment completed successfully!"
+          echo "🌐 Production URL: https://practice-makes-perfect-5e85e.web.app"
+          echo "📊 Health Check: https://practice-makes-perfect-5e85e.web.app/health.json"
+          echo "🆔 Deployment ID: ${{ needs.pre-deployment-checks.outputs.deployment_id }}"

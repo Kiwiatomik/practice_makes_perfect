@@ -1,0 +1,184 @@
+name: Deploy
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  deploy-staging:
+    runs-on: ubuntu-latest
+    environment: staging
+    permissions:
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Security gate: Block deployment on critical vulnerabilities
+      - name: Security vulnerability check (blocking)
+        run: |
+          echo "🛡️ Checking for critical security vulnerabilities before deployment..."
+          npm audit --audit-level=critical --json > security-check.json || true
+
+          CRITICAL_VULNS=$(jq '.metadata.vulnerabilities.critical // 0' security-check.json)
+
+          if [ "$CRITICAL_VULNS" != "0" ]; then
+            echo "🚨 DEPLOYMENT BLOCKED: $CRITICAL_VULNS critical vulnerabilities detected!"
+            echo "Please fix critical vulnerabilities before deploying to staging:"
+            npm audit --audit-level=critical
+            echo ""
+            echo "To fix: run 'npm audit fix' and commit the changes"
+            exit 1
+          else
+            echo "✅ No critical vulnerabilities detected - proceeding with deployment"
+          fi
+
+      - name: Run tests
+        run: |
+          npm run test:run
+          npm run lint
+          npx tsc --noEmit
+
+      - name: Build for staging
+        run: npm run build
+        env:
+          VITE_ENVIRONMENT: staging
+          VITE_FIREBASE_API_KEY: ${{ secrets.STAGING_VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.STAGING_VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ secrets.STAGING_VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.STAGING_VITE_FIREBASE_STORAGE_BUCKET }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.STAGING_VITE_FIREBASE_MESSAGING_SENDER_ID }}
+          VITE_FIREBASE_APP_ID: ${{ secrets.STAGING_VITE_FIREBASE_APP_ID }}
+          VITE_SENTRY_DSN: ${{ secrets.STAGING_VITE_SENTRY_DSN || '' }}
+          VITE_APP_VERSION: ${{ github.sha }}
+
+      - name: Setup Firebase CLI
+        run: npm install -g firebase-tools
+
+      - name: Deploy to staging
+        run: |
+          firebase use staging
+          firebase deploy --config=firebase.staging.json --token="${{ secrets.FIREBASE_TOKEN }}"
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+
+      - name: Post staging deployment
+        run: |
+          echo "🌐 Staging deployment complete!"
+          echo "Staging URL: https://practice-makes-perfect-staging.web.app"
+          echo "Health check: https://practice-makes-perfect-staging.web.app/health.json"
+
+  deploy-production:
+    runs-on: ubuntu-latest
+    environment: production
+    needs: [deploy-staging]
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      # CRITICAL security gate for production
+      - name: Final security vulnerability check (blocking)
+        run: |
+          echo "🛡️ FINAL SECURITY CHECK before production deployment..."
+          npm audit --audit-level=critical --json > production-security-check.json || true
+
+          CRITICAL_VULNS=$(jq '.metadata.vulnerabilities.critical // 0' production-security-check.json)
+          HIGH_VULNS=$(jq '.metadata.vulnerabilities.high // 0' production-security-check.json)
+
+          if [ "$CRITICAL_VULNS" != "0" ]; then
+            echo "🚨 PRODUCTION DEPLOYMENT BLOCKED!"
+            echo "Critical vulnerabilities: $CRITICAL_VULNS"
+            echo "This is the final security gate - no critical vulnerabilities allowed in production."
+            npm audit --audit-level=critical
+            exit 1
+          fi
+
+          if [ "$HIGH_VULNS" -gt "5" ]; then
+            echo "⚠️ WARNING: $HIGH_VULNS high-severity vulnerabilities detected"
+            echo "Consider fixing these before production deployment"
+            npm audit --audit-level=high
+          fi
+
+          echo "✅ Security check passed - proceeding with production deployment"
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
+
+      - name: Run full test suite
+        run: |
+          npm run test:run
+          npm run lint
+          npx tsc --noEmit
+          npm run e2e
+        env:
+          VITE_FIREBASE_API_KEY: ${{ secrets.STAGING_VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.STAGING_VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ secrets.STAGING_VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.STAGING_VITE_FIREBASE_STORAGE_BUCKET }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.STAGING_VITE_FIREBASE_MESSAGING_SENDER_ID }}
+          VITE_FIREBASE_APP_ID: ${{ secrets.STAGING_VITE_FIREBASE_APP_ID }}
+          VITE_SENTRY_DSN: ${{ secrets.STAGING_VITE_SENTRY_DSN || '' }}
+
+      - name: Build for production
+        run: npm run build
+        env:
+          VITE_ENVIRONMENT: production
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+          VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN || '' }}
+          VITE_APP_VERSION: ${{ github.sha }}
+
+      - name: Setup Firebase CLI
+        run: npm install -g firebase-tools
+
+      - name: Deploy to production
+        run: |
+          firebase use production
+          firebase deploy --config=firebase.production.json --token="${{ secrets.FIREBASE_TOKEN }}"
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+
+      - name: Post production deployment
+        run: |
+          echo "🌐 Production deployment complete!"
+          echo "Production URL: https://practice-makes-perfect-5e85e.web.app"
+          echo "Health check: https://practice-makes-perfect-5e85e.web.app/health.json"
+
+      - name: Create GitHub release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ github.run_number }}
+          release_name: Release v${{ github.run_number }}
+          body: |
+            Automated release from commit ${{ github.sha }}
+
+            Changes in this release:
+            ${{ github.event.head_commit.message }}
+          draft: false
+          prerelease: false

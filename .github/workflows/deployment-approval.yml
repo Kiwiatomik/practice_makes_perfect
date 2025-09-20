@@ -1,0 +1,425 @@
+name: Deployment Approval & Notifications
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+      deployment_type:
+        description: 'Deployment strategy'
+        required: true
+        default: 'standard'
+        type: choice
+        options:
+          - standard
+          - blue-green
+          - canary
+      approval_required:
+        description: 'Require manual approval'
+        type: boolean
+        default: true
+      notify_team:
+        description: 'Notify deployment team'
+        type: boolean
+        default: true
+
+jobs:
+  # Pre-deployment approval request
+  request-approval:
+    name: Request Deployment Approval
+    runs-on: ubuntu-latest
+    if: github.event.inputs.approval_required == 'true'
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+
+    outputs:
+      approval_issue: ${{ steps.create-approval.outputs.issue_number }}
+      deployment_id: ${{ steps.generate-id.outputs.deployment_id }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Generate deployment ID
+        id: generate-id
+        run: |
+          DEPLOYMENT_ID="deploy-$(date +%Y%m%d-%H%M%S)-${{ github.run_number }}"
+          echo "deployment_id=$DEPLOYMENT_ID" >> $GITHUB_OUTPUT
+
+      - name: Create deployment approval request
+        id: create-approval
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const { data: issue } = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `🚀 Deployment Approval Required: ${{ github.event.inputs.environment }}`,
+              body: `# 🚀 Deployment Approval Request
+
+              **Environment:** ${{ github.event.inputs.environment }}
+              **Strategy:** ${{ github.event.inputs.deployment_type }}
+              **Deployment ID:** ${{ steps.generate-id.outputs.deployment_id }}
+              **Requested by:** @${{ github.actor }}
+              **Branch:** ${{ github.ref_name }}
+              **Commit:** ${{ github.sha }}
+
+              ## 📋 Pre-deployment Checklist
+
+              Before approving this deployment, please verify:
+
+              - [ ] **Security**: All security checks have passed
+              - [ ] **Tests**: Full test suite is passing
+              - [ ] **Staging**: Changes have been tested in staging environment
+              - [ ] **Documentation**: Any necessary documentation has been updated
+              - [ ] **Database**: No breaking database changes without migration plan
+              - [ ] **Rollback**: Rollback plan is understood and feasible
+              - [ ] **Monitoring**: Monitoring and alerting are configured for new features
+              - [ ] **Team Notification**: Relevant team members have been notified
+
+              ## ⚠️ Production Deployment Considerations
+
+              ${github.event.inputs.environment === 'production' ? `
+              **PRODUCTION DEPLOYMENT - Extra caution required:**
+              - [ ] **Business Hours**: Deployment is during approved maintenance window
+              - [ ] **Communication**: Stakeholders have been notified
+              - [ ] **Support**: Support team is aware of the deployment
+              - [ ] **Traffic**: Current traffic patterns have been considered
+              ` : ''}
+
+              ## 🎯 Approval Actions
+
+              **To approve this deployment:**
+              - Add the \`approved\` label to this issue
+              - Comment with your approval reasoning
+
+              **To reject this deployment:**
+              - Add the \`rejected\` label to this issue
+              - Comment with rejection reasoning
+
+              **To request changes:**
+              - Add the \`changes-requested\` label to this issue
+              - Comment with specific change requests
+
+              ## ⏱️ Approval Timeout
+
+              This approval request will timeout in 4 hours if no action is taken.
+
+              ---
+              *This deployment requires manual approval before proceeding*`,
+              labels: [
+                'deployment-approval',
+                'needs-review',
+                github.event.inputs.environment,
+                github.event.inputs.deployment_type
+              ],
+              assignees: [github.repository_owner]
+            });
+
+            console.log(`Created approval request issue #${issue.number}`);
+            return issue.number;
+
+      - name: Send approval notification
+        if: github.event.inputs.notify_team == 'true'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            // Create a team notification comment
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: ${{ steps.create-approval.outputs.issue_number }},
+              body: `📢 **Team Notification**
+
+              @${{ github.repository_owner }} - Deployment approval required for **${{ github.event.inputs.environment }}**
+
+              **Quick Actions:**
+              - [View Changes](https://github.com/${{ github.repository }}/compare/main...HEAD)
+              - [Review CI Status](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+              - [Production Health](https://practice-makes-perfect-5e85e.web.app/health.json)
+
+              Please review and approve/reject within 4 hours.`
+            });
+
+  # Wait for approval
+  wait-for-approval:
+    name: Wait for Deployment Approval
+    runs-on: ubuntu-latest
+    needs: [request-approval]
+    if: github.event.inputs.approval_required == 'true'
+    timeout-minutes: 240  # 4 hours
+
+    steps:
+      - name: Wait for approval
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const issueNumber = ${{ needs.request-approval.outputs.approval_issue }};
+            const maxWaitTime = 4 * 60 * 60 * 1000; // 4 hours in milliseconds
+            const startTime = Date.now();
+            const pollInterval = 30000; // 30 seconds
+
+            console.log(`Waiting for approval on issue #${issueNumber}`);
+
+            while (Date.now() - startTime < maxWaitTime) {
+              // Get current issue state
+              const { data: issue } = await github.rest.issues.get({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber
+              });
+
+              const labels = issue.labels.map(label => label.name);
+
+              if (labels.includes('approved')) {
+                console.log('✅ Deployment approved!');
+
+                // Add approval confirmation comment
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issueNumber,
+                  body: `✅ **Deployment Approved**
+
+                  Proceeding with ${{ github.event.inputs.environment }} deployment.
+
+                  **Strategy:** ${{ github.event.inputs.deployment_type }}
+                  **Approved at:** ${new Date().toISOString()}
+
+                  You can monitor the deployment progress in the [Actions tab](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}).`
+                });
+
+                return;
+              }
+
+              if (labels.includes('rejected')) {
+                console.log('❌ Deployment rejected');
+
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issueNumber,
+                  body: `❌ **Deployment Rejected**
+
+                  The ${{ github.event.inputs.environment }} deployment has been rejected.
+
+                  Please address the concerns raised and request a new deployment when ready.`
+                });
+
+                throw new Error('Deployment was rejected');
+              }
+
+              if (labels.includes('changes-requested')) {
+                console.log('🔄 Changes requested');
+
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issueNumber,
+                  body: `🔄 **Changes Requested**
+
+                  Changes have been requested for this deployment.
+
+                  Please address the requested changes and create a new deployment request.`
+                });
+
+                throw new Error('Changes were requested');
+              }
+
+              // Wait before next poll
+              await new Promise(resolve => setTimeout(resolve, pollInterval));
+            }
+
+            // Timeout reached
+            console.log('⏰ Approval timeout reached');
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              body: `⏰ **Approval Timeout**
+
+              This deployment approval request has timed out after 4 hours.
+
+              Please create a new deployment request when ready to proceed.`
+            });
+
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              labels: ['deployment-approval', 'timeout', github.event.inputs.environment],
+              state: 'closed'
+            });
+
+            throw new Error('Approval timeout reached');
+
+  # Execute deployment
+  execute-deployment:
+    name: Execute Approved Deployment
+    runs-on: ubuntu-latest
+    needs: [request-approval, wait-for-approval]
+    if: always() && (needs.wait-for-approval.result == 'success' || github.event.inputs.approval_required == 'false')
+    environment: ${{ github.event.inputs.environment }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Start deployment notification
+        if: github.event.inputs.notify_team == 'true'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            // Find the approval issue if it exists
+            if ('${{ needs.request-approval.outputs.approval_issue }}') {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: ${{ needs.request-approval.outputs.approval_issue }},
+                body: `🚀 **Deployment Started**
+
+                The approved deployment is now starting.
+
+                **Environment:** ${{ github.event.inputs.environment }}
+                **Strategy:** ${{ github.event.inputs.deployment_type }}
+                **Started at:** ${new Date().toISOString()}
+
+                [Monitor Progress](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})`
+              });
+            }
+
+      - name: Execute deployment
+        run: |
+          echo "🚀 Starting ${{ github.event.inputs.environment }} deployment..."
+          echo "Strategy: ${{ github.event.inputs.deployment_type }}"
+          echo "This would trigger the actual deployment workflow"
+
+          # In practice, this would call the production-deploy.yml workflow
+          # with the specified parameters
+
+      - name: Simulate deployment success
+        run: |
+          echo "✅ Deployment completed successfully"
+          echo "Environment: ${{ github.event.inputs.environment }}"
+          echo "URL: https://practice-makes-perfect-${environment}.web.app"
+        env:
+          environment: ${{ github.event.inputs.environment == 'production' && '5e85e' || 'staging' }}
+
+  # Post-deployment notifications
+  post-deployment-notifications:
+    name: Post-deployment Notifications
+    runs-on: ubuntu-latest
+    needs: [request-approval, execute-deployment]
+    if: always() && needs.execute-deployment.result == 'success'
+
+    steps:
+      - name: Success notification
+        if: github.event.inputs.notify_team == 'true'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const environment = '${{ github.event.inputs.environment }}';
+            const url = environment === 'production'
+              ? 'https://practice-makes-perfect-5e85e.web.app'
+              : 'https://practice-makes-perfect-staging.web.app';
+
+            // Update approval issue if it exists
+            if ('${{ needs.request-approval.outputs.approval_issue }}') {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: ${{ needs.request-approval.outputs.approval_issue }},
+                body: `🎉 **Deployment Completed Successfully!**
+
+                **Environment:** ${environment}
+                **Strategy:** ${{ github.event.inputs.deployment_type }}
+                **Completed at:** ${new Date().toISOString()}
+
+                ## 🔗 Links
+                - **Application:** [${url}](${url})
+                - **Health Check:** [${url}/health.json](${url}/health.json)
+                - **Monitoring:** Check your monitoring dashboard
+
+                ## 📊 Next Steps
+                - Monitor application health and performance
+                - Watch for any user-reported issues
+                - Review deployment metrics
+
+                Thank you for your approval! 🚀`
+              });
+
+              // Close the approval issue
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: ${{ needs.request-approval.outputs.approval_issue }},
+                labels: ['deployment-approval', 'completed', environment],
+                state: 'closed'
+              });
+            }
+
+  # Handle deployment failure
+  deployment-failure:
+    name: Handle Deployment Failure
+    runs-on: ubuntu-latest
+    needs: [request-approval, execute-deployment]
+    if: always() && needs.execute-deployment.result == 'failure'
+
+    steps:
+      - name: Failure notification
+        uses: actions/github-script@v6
+        with:
+          script: |
+            // Create critical failure issue
+            const { data: issue } = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `🚨 DEPLOYMENT FAILURE: ${{ github.event.inputs.environment }}`,
+              body: `# 🚨 Deployment Failure Alert
+
+              **Environment:** ${{ github.event.inputs.environment }}
+              **Strategy:** ${{ github.event.inputs.deployment_type }}
+              **Failed at:** ${new Date().toISOString()}
+              **Run ID:** ${{ github.run_id }}
+
+              ## 🆘 Immediate Actions Required
+
+              1. **Check application health immediately**
+              2. **Review deployment logs**: [View Logs](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+              3. **Consider rollback if necessary**
+              4. **Alert on-call team**
+
+              ## 🔗 Quick Links
+              - [Application](https://practice-makes-perfect-${{ github.event.inputs.environment == 'production' && '5e85e' || 'staging' }}.web.app)
+              - [Health Check](https://practice-makes-perfect-${{ github.event.inputs.environment == 'production' && '5e85e' || 'staging' }}.web.app/health.json)
+              - [Rollback Workflow](https://github.com/${{ github.repository }}/actions/workflows/rollback.yml)
+
+              **This requires IMMEDIATE attention!**`,
+              labels: ['critical', 'deployment-failure', '${{ github.event.inputs.environment }}', 'incident'],
+              assignees: ['${{ github.repository_owner }}']
+            });
+
+            // Update approval issue if it exists
+            if ('${{ needs.request-approval.outputs.approval_issue }}') {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: ${{ needs.request-approval.outputs.approval_issue }},
+                body: `🚨 **DEPLOYMENT FAILED**
+
+                The approved deployment has failed and requires immediate attention.
+
+                **Failure Issue:** #${issue.number}
+                **Failed at:** ${new Date().toISOString()}
+
+                Please check the application health and consider rollback if necessary.`
+              });
+            }

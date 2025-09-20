@@ -18,7 +18,7 @@ import {
   // DocumentReference
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
-import { Course, Lesson, User, Prompt, UserAnswer } from '../types';
+import { Course, Lesson, Prompt, UserAnswer } from '../types';
 
 const COURSES_COLLECTION = 'course';
 const LESSONS_COLLECTION = 'lesson';
@@ -186,10 +186,10 @@ export const coursesService = {
       // Fetch lessons from subcollection
       try {
         const lessons = await this.getLessonsByCourseId(courseId);
-        course = { ...course, lessons };
+        course = { ...course, lessons } as any;
       } catch (error) {
         console.warn('Could not fetch lessons for course:', courseId, error);
-        course = { ...course, lessons: [] };
+        course = { ...course, lessons: [] } as any;
       }
       
       return course;

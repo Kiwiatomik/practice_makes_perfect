@@ -49,7 +49,7 @@ describe('useModalBlurEffect hook', () => {
     })
 
     // Setup useEffect mock to immediately call the effect function
-    mockUseEffect.mockImplementation((effectFn, deps) => {
+    mockUseEffect.mockImplementation((effectFn) => {
       effectFn()
     })
   })
@@ -164,9 +164,9 @@ describe('useModalBlurEffect hook', () => {
 
   describe('effect cleanup', () => {
     it('should return a cleanup function that removes all classes', () => {
-      let cleanupFn: (() => void) | undefined
+      let cleanupFn: any
 
-      mockUseEffect.mockImplementation((effectFn, deps) => {
+      mockUseEffect.mockImplementation((effectFn) => {
         cleanupFn = effectFn()
       })
 
@@ -186,9 +186,9 @@ describe('useModalBlurEffect hook', () => {
     })
 
     it('should cleanup gracefully when root element is null', () => {
-      let cleanupFn: (() => void) | undefined
+      let cleanupFn: any
 
-      mockUseEffect.mockImplementation((effectFn, deps) => {
+      mockUseEffect.mockImplementation((effectFn) => {
         cleanupFn = effectFn()
       })
 

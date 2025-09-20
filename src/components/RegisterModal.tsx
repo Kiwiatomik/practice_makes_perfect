@@ -4,7 +4,7 @@ import Button from 'react-bootstrap/Button'
 import Form from 'react-bootstrap/Form'
 import Alert from 'react-bootstrap/Alert'
 import Spinner from 'react-bootstrap/Spinner'
-import { createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from 'firebase/auth'
+import { createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, AuthError } from 'firebase/auth'
 import { auth } from '../config/firebase'
 import { useModalBlurEffect } from '../hooks/useModalBlurEffect'
 import './AuthModal.css'
@@ -130,7 +130,8 @@ const RegisterModal = ({ show, onHide, onSwitchToLogin }: RegisterModalProps) =>
       
       if (err instanceof Error) {
         // Handle specific Firebase errors
-        switch (err.code || err.message) {
+        const firebaseError = err as AuthError
+        switch (firebaseError.code || err.message) {
           case 'auth/popup-closed-by-user':
             errorMessage = 'Registration cancelled'
             break

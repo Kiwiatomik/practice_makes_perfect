@@ -11,7 +11,7 @@ vi.mock('../hooks/useGetCourse')
 
 // Mock React Router hooks
 vi.mock('react-router', async (importOriginal) => {
-  const actual = await importOriginal()
+  const actual = await importOriginal() as any
   return {
     ...actual,
     useParams: vi.fn()
@@ -78,7 +78,7 @@ describe('CoursePage', () => {
     },
     createdAt: new Date('2023-01-01'),
     updatedAt: new Date('2023-06-01'),
-    level: 'Bachelor',
+    level: 'Bachelor' as const,
     subject: 'Mathematics',
     tags: ['calculus', 'algebra'],
     isPublic: true,
@@ -473,7 +473,7 @@ describe('CoursePage', () => {
         },
         createdAt: new Date(),
         updatedAt: new Date(),
-        level: 'Bachelor',
+        level: 'Bachelor' as const,
         subject: '',
         tags: [],
         isPublic: true,

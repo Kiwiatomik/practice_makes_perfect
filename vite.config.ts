@@ -1,9 +1,25 @@
 /// <reference types="vitest" />
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { sentryVitePlugin } from '@sentry/vite-plugin'
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    sentryVitePlugin({
+      org: process.env.SENTRY_ORG,
+      project: process.env.SENTRY_PROJECT,
+      authToken: process.env.SENTRY_AUTH_TOKEN,
+      release: {
+        name: process.env.VITE_APP_VERSION || 'dev',
+        uploadLegacySourcemaps: false,
+      },
+      sourcemaps: {
+        assets: ['./dist/assets/**'],
+      },
+      disable: process.env.NODE_ENV === 'development',
+    }),
+  ],
   css: {
     preprocessorOptions: {
       scss: {
@@ -100,5 +116,6 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: './src/test/setup.ts',
+    exclude: ['**/e2e/**', '**/node_modules/**'],
   }
 })

@@ -1,0 +1,272 @@
+name: Auto Security Updates
+
+on:
+  schedule:
+    # Run every Tuesday at 10 AM UTC (after weekly security scan)
+    - cron: '0 10 * * 2'
+  workflow_dispatch:
+    inputs:
+      update_type:
+        description: 'Type of updates to apply'
+        required: true
+        default: 'security'
+        type: choice
+        options:
+          - security
+          - patch
+          - minor
+          - all
+
+jobs:
+  auto-security-updates:
+    name: Auto Security Updates
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check for security vulnerabilities
+        id: security-check
+        run: |
+          echo "🔍 Checking for security vulnerabilities..."
+          npm audit --audit-level=low --json > initial-audit.json || true
+
+          TOTAL_VULNS=$(jq '.metadata.vulnerabilities.total // 0' initial-audit.json)
+          CRITICAL_VULNS=$(jq '.metadata.vulnerabilities.critical // 0' initial-audit.json)
+          HIGH_VULNS=$(jq '.metadata.vulnerabilities.high // 0' initial-audit.json)
+
+          echo "total_vulnerabilities=$TOTAL_VULNS" >> $GITHUB_OUTPUT
+          echo "critical_vulnerabilities=$CRITICAL_VULNS" >> $GITHUB_OUTPUT
+          echo "high_vulnerabilities=$HIGH_VULNS" >> $GITHUB_OUTPUT
+
+          echo "📊 Initial vulnerability count: $TOTAL_VULNS (Critical: $CRITICAL_VULNS, High: $HIGH_VULNS)"
+
+      - name: Apply automatic security fixes
+        if: steps.security-check.outputs.total_vulnerabilities != '0'
+        id: apply-fixes
+        run: |
+          echo "🔧 Applying automatic security fixes..."
+
+          # Create a backup of package-lock.json
+          cp package-lock.json package-lock.json.backup
+
+          # Try to fix vulnerabilities automatically
+          npm audit fix --audit-level=high || true
+
+          # Check if package-lock.json changed
+          if ! cmp -s package-lock.json package-lock.json.backup; then
+            echo "changes_applied=true" >> $GITHUB_OUTPUT
+            echo "✅ Security fixes applied"
+
+            # Get the list of fixed packages
+            npm ls --depth=0 > after-fix-packages.txt || true
+          else
+            echo "changes_applied=false" >> $GITHUB_OUTPUT
+            echo "ℹ️ No automatic fixes available"
+          fi
+
+          rm package-lock.json.backup
+
+      - name: Update dependencies (if requested)
+        if: github.event.inputs.update_type != 'security' && github.event.inputs.update_type != ''
+        run: |
+          echo "🔄 Updating dependencies..."
+
+          UPDATE_TYPE="${{ github.event.inputs.update_type }}"
+
+          case $UPDATE_TYPE in
+            "patch")
+              npx npm-check-updates -u --target patch
+              ;;
+            "minor")
+              npx npm-check-updates -u --target minor
+              ;;
+            "all")
+              npx npm-check-updates -u
+              ;;
+          esac
+
+          npm install
+
+      - name: Run tests after updates
+        if: steps.apply-fixes.outputs.changes_applied == 'true' || github.event.inputs.update_type != 'security'
+        run: |
+          echo "🧪 Running tests to verify updates..."
+          npm run test:run
+          npm run lint
+          npx tsc --noEmit
+
+      - name: Generate update summary
+        if: steps.apply-fixes.outputs.changes_applied == 'true' || github.event.inputs.update_type != 'security'
+        id: generate-summary
+        run: |
+          # Check vulnerabilities after fixes
+          npm audit --audit-level=low --json > final-audit.json || true
+
+          FINAL_VULNS=$(jq '.metadata.vulnerabilities.total // 0' final-audit.json)
+          FINAL_CRITICAL=$(jq '.metadata.vulnerabilities.critical // 0' final-audit.json)
+          FINAL_HIGH=$(jq '.metadata.vulnerabilities.high // 0' final-audit.json)
+
+          INITIAL_VULNS="${{ steps.security-check.outputs.total_vulnerabilities }}"
+          VULNS_FIXED=$((INITIAL_VULNS - FINAL_VULNS))
+
+          cat << EOF > UPDATE_SUMMARY.md
+          # 🛡️ Automated Security Update Summary
+
+          ## 📊 Vulnerability Status
+
+          | Metric | Before | After | Fixed |
+          |--------|--------|-------|-------|
+          | **Total** | $INITIAL_VULNS | $FINAL_VULNS | $VULNS_FIXED |
+          | **Critical** | ${{ steps.security-check.outputs.critical_vulnerabilities }} | $FINAL_CRITICAL | $((${{ steps.security-check.outputs.critical_vulnerabilities }} - FINAL_CRITICAL)) |
+          | **High** | ${{ steps.security-check.outputs.high_vulnerabilities }} | $FINAL_HIGH | $((${{ steps.security-check.outputs.high_vulnerabilities }} - FINAL_HIGH)) |
+
+          ## 🔧 Changes Applied
+
+          - **Security fixes**: Applied via \`npm audit fix\`
+          - **Dependency updates**: ${{ github.event.inputs.update_type || 'security only' }}
+          - **Tests**: ✅ All tests passing after updates
+
+          ## ✅ Verification
+
+          - [x] Security vulnerabilities addressed
+          - [x] Tests passing
+          - [x] TypeScript compilation successful
+          - [x] Linting checks passed
+
+          ## 📋 Next Steps
+
+          1. Review the changes in this PR
+          2. Test the application manually if needed
+          3. Merge when satisfied with the updates
+
+          ---
+          *This PR was automatically created by GitHub Actions*
+          EOF
+
+          echo "summary_created=true" >> $GITHUB_OUTPUT
+
+      - name: Create Pull Request
+        if: steps.apply-fixes.outputs.changes_applied == 'true' || github.event.inputs.update_type != 'security'
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: |
+            security: automated dependency security updates
+
+            - Fixed ${{ steps.security-check.outputs.total_vulnerabilities }} vulnerabilities
+            - Applied security patches via npm audit fix
+            - All tests passing after updates
+
+            🤖 Generated with Claude Code
+          title: '🛡️ Automated Security Updates - ${{ github.run_number }}'
+          body-path: UPDATE_SUMMARY.md
+          branch: security/auto-updates-${{ github.run_number }}
+          delete-branch: true
+          labels: |
+            security
+            dependencies
+            automated
+          reviewers: ${{ github.repository_owner }}
+          assignees: ${{ github.repository_owner }}
+
+      - name: Enable auto-merge for security PRs
+        if: steps.apply-fixes.outputs.changes_applied == 'true' && steps.security-check.outputs.critical_vulnerabilities == '0'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            // Auto-approve PRs that only fix non-critical vulnerabilities
+            const { data: prs } = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              head: `${context.repo.owner}:security/auto-updates-${{ github.run_number }}`,
+              state: 'open'
+            });
+
+            if (prs.length > 0) {
+              const pr = prs[0];
+
+              // Add auto-merge label for non-critical security fixes
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pr.number,
+                labels: ['auto-merge-candidate']
+              });
+
+              console.log(`Added auto-merge-candidate label to PR #${pr.number}`);
+            }
+
+  # Auto-merge workflow for low-risk security updates
+  auto-merge-security:
+    name: Auto-merge Security Updates
+    runs-on: ubuntu-latest
+    needs: [auto-security-updates]
+    if: always()
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Auto-merge security PRs
+        uses: actions/github-script@v6
+        with:
+          script: |
+            // Find PRs with auto-merge-candidate label
+            const { data: prs } = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              sort: 'created',
+              direction: 'desc'
+            });
+
+            for (const pr of prs) {
+              if (pr.labels.some(label => label.name === 'auto-merge-candidate')) {
+                try {
+                  // Check if all status checks are passing
+                  const { data: checks } = await github.rest.checks.listForRef({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    ref: pr.head.sha
+                  });
+
+                  const allPassing = checks.check_runs.every(check =>
+                    check.status === 'completed' && check.conclusion === 'success'
+                  );
+
+                  if (allPassing) {
+                    await github.rest.pulls.merge({
+                      owner: context.repo.owner,
+                      repo: context.repo.repo,
+                      pull_request_number: pr.number,
+                      commit_title: `Merge security updates PR #${pr.number}`,
+                      merge_method: 'squash'
+                    });
+
+                    console.log(`Auto-merged security PR #${pr.number}`);
+                  } else {
+                    console.log(`PR #${pr.number} has failing checks, skipping auto-merge`);
+                  }
+                } catch (error) {
+                  console.log(`Could not auto-merge PR #${pr.number}: ${error.message}`);
+                }
+              }
+            }

@@ -5,8 +5,8 @@ import { Working } from '../types'
 const LazyInlineMath = lazy(() => import('react-katex').then(module => ({ default: module.InlineMath })))
 const LazyBlockMath = lazy(() => import('react-katex').then(module => ({ default: module.BlockMath })))
 
-// Lazy load the main LatexRenderer
-const LazyLatexRenderer = lazy(() => import('./LatexRenderer').then(module => ({ default: module.LatexRenderer })))
+// Since LatexRenderer is a class with static methods, not a component, we'll import it normally
+import { LatexRenderer } from './LatexRenderer'
 
 // Loading fallback for math rendering
 const MathLoadingFallback = ({ content }: { content: string }) => (
@@ -25,12 +25,7 @@ export class LazyLatexRendererWrapper {
    */
   static renderContent(content: string): React.ReactNode {
     if (!content) return ''
-
-    return (
-      <Suspense fallback={<MathLoadingFallback content={content} />}>
-        <LazyLatexRenderer />
-      </Suspense>
-    )
+    return LatexRenderer.renderContent(content)
   }
 
   /**
@@ -38,12 +33,7 @@ export class LazyLatexRendererWrapper {
    */
   static renderPreview(content: string): React.ReactNode {
     if (!content.trim()) return null
-
-    return (
-      <Suspense fallback={<MathLoadingFallback content={content} />}>
-        <LazyLatexRenderer />
-      </Suspense>
-    )
+    return LatexRenderer.renderPreview(content)
   }
 
   /**
@@ -51,12 +41,7 @@ export class LazyLatexRendererWrapper {
    */
   static renderWorkings(workings: Working[]): React.ReactNode {
     if (!workings || workings.length === 0) return null
-
-    return (
-      <Suspense fallback={<div className="text-muted">Loading solution steps...</div>}>
-        <LazyLatexRenderer />
-      </Suspense>
-    )
+    return LatexRenderer.renderWorkings(workings)
   }
 }
 

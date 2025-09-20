@@ -36,9 +36,9 @@ function CreateLesson() {
   
   // Set default order based on existing lessons
   useEffect(() => {
-    if (course?.lessons) {
-      const maxOrder = course.lessons.length > 0 
-        ? Math.max(...course.lessons.map(lesson => lesson.order))
+    if ((course as any)?.lessons) {
+      const maxOrder = (course as any).lessons.length > 0 
+        ? Math.max(...(course as any).lessons.map((lesson: any) => lesson.order))
         : 0
       setFormData(prev => ({
         ...prev,
@@ -52,7 +52,7 @@ function CreateLesson() {
   console.log('CreateLesson Debug - Current User UID:', currentUser?.uid)
   console.log('CreateLesson Debug - Course:', course)
   console.log('CreateLesson Debug - Course createdBy:', course?.createdBy)
-  console.log('CreateLesson Debug - Course createdBy UID:', course?.createdBy?.uid)
+  console.log('CreateLesson Debug - Course createdBy UID:', course?.createdBy?.id)
   console.log('CreateLesson Debug - Is creator?:', course?.createdBy?.id === currentUser?.uid)
   
   const handleInputChange = (field: string, value: string | number) => {
@@ -104,9 +104,11 @@ function CreateLesson() {
         order: formData.order,
         isCompleted: false,
         createdBy: {
-          uid: currentUser.uid,
+          id: currentUser.uid,
           displayName: currentUser.displayName || 'Anonymous',
-          email: currentUser.email || ''
+          email: currentUser.email || '',
+          createdAt: new Date(),
+          lastActive: new Date()
         }
       }
       

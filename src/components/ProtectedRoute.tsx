@@ -1,5 +1,4 @@
 import { ReactNode } from 'react'
-import { Navigate } from 'react-router'
 import { useAuth } from '../contexts/AuthContext'
 import Container from 'react-bootstrap/Container'
 import Alert from 'react-bootstrap/Alert'

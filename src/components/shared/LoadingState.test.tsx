@@ -4,17 +4,19 @@ import LoadingState from './LoadingState'
 import React from 'react'
 
 // Mock react-bootstrap/Container
-vi.mock('react-bootstrap/Container', () => {
-  const React = require('react')
+vi.mock('react-bootstrap/Container', async () => {
+  const React = await import('react')
+  const MockContainer = React.forwardRef(({ children, className, ...props }: any, ref: any) => (
+    React.createElement('div', {
+      ref,
+      'data-testid': 'container',
+      className,
+      ...props
+    }, children)
+  ))
+  MockContainer.displayName = 'MockContainer'
   return {
-    default: React.forwardRef<HTMLDivElement, any>(({ children, className, ...props }, ref) => (
-      React.createElement('div', {
-        ref,
-        'data-testid': 'container',
-        className,
-        ...props
-      }, children)
-    ))
+    default: MockContainer
   }
 })
 

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { renderHook, waitFor, act } from '@testing-library/react'
+import { renderHook, act } from '@testing-library/react'
 import { useSearchCourses } from './useSearchCourses'
 import { coursesService } from '../services/coursesService'
 import { Course } from '../types'
@@ -25,9 +25,12 @@ const createMockCourse = (overrides: Partial<Course> = {}): Course => ({
   createdBy: {
     id: 'user-123',
     email: 'instructor@example.com',
-    displayName: 'Dr. Smith'
+    displayName: 'Dr. Smith',
+    createdAt: new Date(),
+    lastActive: new Date()
   },
   createdAt: new Date(),
+  updatedAt: new Date(),
   ...overrides
 })
 
@@ -54,7 +57,7 @@ describe('useSearchCourses hook', () => {
       mockCoursesService.getAllCourses.mockResolvedValue(mockCourses)
       
       const { result } = renderHook(() => useSearchCourses({ autoFetch: true }))
-      
+
       expect(result.current.loading).toBe(true)
       
       await act(async () => {
@@ -67,7 +70,7 @@ describe('useSearchCourses hook', () => {
 
     it('should not auto-fetch when autoFetch is false', () => {
       const { result } = renderHook(() => useSearchCourses({ autoFetch: false }))
-      
+
       expect(result.current.loading).toBe(true)
       expect(mockCoursesService.getAllCourses).not.toHaveBeenCalled()
     })
@@ -94,7 +97,7 @@ describe('useSearchCourses hook', () => {
       const mockCourses = [createMockCourse()]
       mockCoursesService.getAllCourses.mockResolvedValue(mockCourses)
       
-      const { result } = renderHook(() => useSearchCourses({
+      const { result: _ } = renderHook(() => useSearchCourses({
         searchTerm: 'calculus'
       }))
       
@@ -112,7 +115,7 @@ describe('useSearchCourses hook', () => {
       const mockCourses = [createMockCourse()]
       mockCoursesService.getAllCourses.mockResolvedValue(mockCourses)
       
-      const { result } = renderHook(() => useSearchCourses({
+      const { result: _ } = renderHook(() => useSearchCourses({
         selectedSubject: 'Physics'
       }))
       
@@ -128,9 +131,9 @@ describe('useSearchCourses hook', () => {
 
     it('should fetch courses with level filter using level mapping', async () => {
       const levelMappings = [
-        { input: 'highschool', expected: 'High school' },
-        { input: 'bachelor', expected: 'Bachelor' },
-        { input: 'master', expected: 'Master' }
+        { input: 'highschool', expected: 'High school' as const },
+        { input: 'bachelor', expected: 'Bachelor' as const },
+        { input: 'master', expected: 'Master' as const }
       ]
       
       for (const { input, expected } of levelMappings) {
@@ -141,11 +144,11 @@ describe('useSearchCourses hook', () => {
         const { result } = renderHook(() => useSearchCourses({
           selectedLevel: input
         }))
-        
+
         await act(async () => {
           await vi.runOnlyPendingTimersAsync()
         })
-        
+
         expect(result.current.loading).toBe(false)
         expect(mockCoursesService.getAllCourses).toHaveBeenCalledWith({
           isPublic: true,
@@ -158,7 +161,7 @@ describe('useSearchCourses hook', () => {
       const mockCourses = [createMockCourse()]
       mockCoursesService.getAllCourses.mockResolvedValue(mockCourses)
       
-      const { result } = renderHook(() => useSearchCourses({
+      const { result: _ } = renderHook(() => useSearchCourses({
         searchTerm: 'calculus',
         selectedSubject: 'Mathematics',
         selectedLevel: 'bachelor'
@@ -180,7 +183,7 @@ describe('useSearchCourses hook', () => {
       const mockCourses = [createMockCourse()]
       mockCoursesService.getAllCourses.mockResolvedValue(mockCourses)
       
-      const { result } = renderHook(() => useSearchCourses({
+      const { result: _ } = renderHook(() => useSearchCourses({
         selectedLevel: 'unknown'
       }))
       
@@ -197,7 +200,7 @@ describe('useSearchCourses hook', () => {
       const mockCourses = [createMockCourse()]
       mockCoursesService.getAllCourses.mockResolvedValue(mockCourses)
       
-      const { result } = renderHook(() => useSearchCourses({
+      const { result: _ } = renderHook(() => useSearchCourses({
         searchTerm: '',
         selectedSubject: '',
         selectedLevel: ''
@@ -451,15 +454,15 @@ describe('useSearchCourses hook', () => {
       mockCoursesService.getAllCourses.mockResolvedValue(mockCourses)
       
       const { result } = renderHook(() => useSearchCourses({ autoFetch: false }))
-      
+
       // Initially no courses
       expect(result.current.courses).toEqual([])
-      
+
       // Manual fetch
       await act(async () => {
         await result.current.fetchCourses()
       })
-      
+
       expect(result.current.courses).toEqual(mockCourses)
     })
 
@@ -472,12 +475,12 @@ describe('useSearchCourses hook', () => {
       mockCoursesService.getAllCourses.mockReturnValue(promise)
       
       const { result } = renderHook(() => useSearchCourses({ autoFetch: false }))
-      
+
       // Start manual fetch
       act(() => {
         result.current.fetchCourses()
       })
-      
+
       expect(result.current.loading).toBe(true)
       
       // Resolve the promise

@@ -4,7 +4,6 @@ import Container from 'react-bootstrap/Container'
 import Row from 'react-bootstrap/Row'
 import Col from 'react-bootstrap/Col'
 import Button from 'react-bootstrap/Button'
-import Badge from 'react-bootstrap/Badge'
 import { Link } from 'react-router'
 import { useLesson } from '../hooks/useLesson'
 import { usePrompt } from '../hooks/usePrompt'
@@ -18,16 +17,21 @@ import LoadingState from '../components/shared/LoadingState'
 import ErrorState from '../components/shared/ErrorState'
 import ErrorBoundary from '../components/ErrorBoundary'
 import { useModalBlurEffect } from '../hooks/useModalBlurEffect'
-import { getDifficultyColor } from '../utils/badgeColors'
 import { sanitizeLessonError } from '../utils/errorSanitization'
+import analyticsService from '../services/analyticsService'
+import performanceService from '../services/performanceService'
+import loggingService from '../services/loggingService'
 
 function Lesson() {
   const { courseId, lessonId } = useParams<{ courseId: string; lessonId: string }>()
+
+  // Performance tracking
+  const [, setPageLoadTrace] = useState<any>(null)
   
   // Custom hooks
   const { currentUser } = useAuth()
   const { lesson, loading, error, firstPrompt, promptLoading, refetch } = useLesson(courseId, lessonId)
-  const { promptState, solveQuestionWithAI, generateQuestion, resetToOriginal, clearAuthRequirement } = usePrompt(firstPrompt)
+  const { promptState, solveQuestionWithAI, generateQuestion, clearAuthRequirement } = usePrompt(firstPrompt)
   const { modalState, showModal, hideModal, setUserAnswer, submitAnswer, resetForNewQuestion } = useModal()
   
   // Auth modal state
@@ -36,6 +40,45 @@ function Lesson() {
   
   // Apply blur effect when auth modals are shown
   useModalBlurEffect({ show: showLoginModal || showRegisterModal })
+
+  // Performance tracking - page load
+  useEffect(() => {
+    const trace = performanceService.measurePageLoad('lesson')
+    setPageLoadTrace(trace)
+
+    // Analytics tracking
+    if (courseId && lessonId && lesson?.title) {
+      analyticsService.trackLessonStart(courseId, lessonId, lesson.title)
+      loggingService.lessonEvent('lesson_page_loaded', lessonId, {
+        courseId,
+        lessonTitle: lesson.title
+      })
+    }
+
+    return () => {
+      if (trace) {
+        performanceService.stopTrace(trace)
+      }
+    }
+  }, [courseId, lessonId, lesson?.title])
+
+  // Track lesson completion time
+  useEffect(() => {
+    if (!lesson || loading) return
+
+    const startTime = Date.now()
+
+    return () => {
+      const timeSpent = Math.floor((Date.now() - startTime) / 1000)
+      if (timeSpent > 10) { // Only track if spent more than 10 seconds
+        analyticsService.trackLessonComplete(courseId!, lessonId!, timeSpent)
+        loggingService.performanceEvent('lesson_completion_time', { timeSpent }, {
+          courseId,
+          lessonId
+        })
+      }
+    }
+  }, [lesson, loading, courseId, lessonId])
   
   // Watch for authentication requirement
   useEffect(() => {
@@ -76,9 +119,44 @@ function Lesson() {
 
   // Helper function for generating questions with modal state reset
   const handleGenerateQuestion = useCallback(async (type: 'practice' | 'nextLevel') => {
-    const success = await generateQuestion(type, courseId, lessonId)
-    if (success) {
-      resetForNewQuestion()
+    const trace = performanceService.measureAIOperation('generate_question')
+    const questionType = type === 'practice' ? 'practice_again' : 'next_level'
+
+    try {
+      loggingService.aiEvent(`generating ${questionType} question`, {
+        courseId,
+        lessonId,
+        type: questionType
+      })
+
+      const success = await generateQuestion(type, courseId, lessonId)
+
+      if (success) {
+        resetForNewQuestion()
+        analyticsService.trackQuestionGeneration(lessonId!, questionType, true)
+        loggingService.aiEvent(`successfully generated ${questionType} question`, {
+          courseId,
+          lessonId
+        })
+      } else {
+        analyticsService.trackQuestionGeneration(lessonId!, questionType, false)
+        loggingService.error(`failed to generate ${questionType} question`, undefined, {
+          courseId,
+          lessonId,
+          errorType: 'question_generation_failed'
+        })
+      }
+    } catch (error) {
+      analyticsService.trackQuestionGeneration(lessonId!, questionType, false)
+      loggingService.error(`error generating ${questionType} question`, error as Error, {
+        courseId,
+        lessonId,
+        errorType: 'question_generation_error'
+      })
+    } finally {
+      if (trace) {
+        performanceService.stopTrace(trace)
+      }
     }
   }, [generateQuestion, courseId, lessonId, resetForNewQuestion])
 
@@ -89,46 +167,85 @@ function Lesson() {
   }, [hideModal])
 
   // Handle starting fresh with the original question
-  const handleStartFresh = useCallback(() => {
-    resetToOriginal()
-    resetForNewQuestion()
-    showModal()
-  }, [resetToOriginal, resetForNewQuestion, showModal])
 
-  // Handle get solution with courseId and lessonId
-  const handleGetSolution = useCallback(() => {
-    solveQuestionWithAI(courseId, lessonId)
-  }, [solveQuestionWithAI, courseId, lessonId])
 
   // Handle answer submission
   const handleSubmitAnswer = useCallback(async () => {
-    submitAnswer(promptState.answer, promptState.answerType)
-    
-    // Record the answer in database
-    if (currentUser && firstPrompt && courseId && lessonId) {
-      try {
-        const answerData = {
-          abstractionLevel: promptState.abstractionLevel || firstPrompt.abstractionLevel || 0,
-          userAnswer: modalState.userAnswer,
-          correctAnswer: promptState.answer,
-          isCorrect: modalState.isCorrect
+    const trace = performanceService.measureApiCall('submit_answer')
+
+    try {
+      submitAnswer(promptState.answer || undefined, promptState.answerType || undefined)
+
+      // Track answer submission
+      if (lessonId && firstPrompt?.id) {
+        analyticsService.trackAnswerSubmission(lessonId, firstPrompt.id, modalState.isCorrect)
+        loggingService.userAction('answer_submitted', {
+          lessonId,
+          questionId: firstPrompt.id,
+          isCorrect: modalState.isCorrect,
+          userAnswer: modalState.userAnswer
+        })
+      }
+
+      // Record the answer in database
+      if (currentUser && firstPrompt && courseId && lessonId) {
+        const dbTrace = performanceService.measureDatabaseOperation('write')
+        try {
+          const answerData = {
+            abstractionLevel: promptState.abstractionLevel || firstPrompt.abstractionLevel || 0,
+            userAnswer: modalState.userAnswer,
+            correctAnswer: promptState.answer || undefined,
+            isCorrect: modalState.isCorrect
+          }
+
+          await coursesService.recordUserAnswer(
+            currentUser.uid,
+            courseId,
+            lessonId,
+            firstPrompt.id,
+            answerData
+          )
+
+          loggingService.info('answer recorded successfully', {
+            courseId,
+            lessonId,
+            questionId: firstPrompt.id
+          })
+        } catch (error) {
+          loggingService.error('failed to record answer', error as Error, {
+            courseId,
+            lessonId,
+            questionId: firstPrompt?.id,
+            errorType: 'database_write_error'
+          })
+        } finally {
+          if (dbTrace) {
+            performanceService.stopTrace(dbTrace)
+          }
         }
-        
-        await coursesService.recordUserAnswer(
-          currentUser.uid,
+      }
+
+      // Automatically load solution after submitting answer
+      const aiTrace = performanceService.measureAIOperation('generate_solution')
+      try {
+        await solveQuestionWithAI(courseId, lessonId)
+        loggingService.aiEvent('solution generated successfully', { courseId, lessonId })
+      } catch (error) {
+        loggingService.error('failed to generate solution', error as Error, {
           courseId,
           lessonId,
-          firstPrompt.id,
-          answerData
-        )
-      } catch (error) {
-        console.error('Failed to record answer:', error)
-        // Don't block user experience if recording fails
+          errorType: 'solution_generation_error'
+        })
+      } finally {
+        if (aiTrace) {
+          performanceService.stopTrace(aiTrace)
+        }
+      }
+    } finally {
+      if (trace) {
+        performanceService.stopTrace(trace)
       }
     }
-    
-    // Automatically load solution after submitting answer
-    solveQuestionWithAI(courseId, lessonId)
   }, [submitAnswer, promptState.answer, promptState.answerType, promptState.abstractionLevel, currentUser, firstPrompt, courseId, lessonId, modalState.userAnswer, modalState.isCorrect, solveQuestionWithAI])
 
 
@@ -219,7 +336,6 @@ function Lesson() {
           onAnswerChange={setUserAnswer}
           onSubmitAnswer={handleSubmitAnswer}
           onGenerateQuestion={handleGenerateQuestion}
-          onGetSolution={handleGetSolution}
           isGeneratingQuestion={promptState.isGeneratingQuestion}
           isLoadingSolution={promptState.isLoadingSolution}
           solutionError={promptState.solutionError}

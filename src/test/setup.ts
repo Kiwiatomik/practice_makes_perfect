@@ -18,6 +18,19 @@ vi.mock('../config/firebase', () => ({
   functions: {
     httpsCallable: vi.fn(),
   },
+  analytics: {
+    logEvent: vi.fn(),
+    setUserProperties: vi.fn(),
+    setUserId: vi.fn(),
+  },
+  performance: {
+    trace: vi.fn(() => ({
+      start: vi.fn(),
+      stop: vi.fn(),
+      putAttribute: vi.fn(),
+      putMetric: vi.fn(),
+    })),
+  },
 }))
 
 // Mock Firebase services

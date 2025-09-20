@@ -1,0 +1,284 @@
+name: Security Vulnerability Scanning
+
+on:
+  schedule:
+    # Run every Monday at 9 AM UTC
+    - cron: '0 9 * * 1'
+  # Allow manual triggering
+  workflow_dispatch:
+  # Run on security updates
+  push:
+    paths:
+      - 'package.json'
+      - 'package-lock.json'
+
+jobs:
+  dependency-audit:
+    name: Dependency Security Audit
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      pull-requests: write
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Enhanced npm audit with detailed reporting
+      - name: Run npm audit
+        id: npm-audit
+        run: |
+          echo "🔍 Running npm audit..."
+          npm audit --audit-level=low --json > npm-audit-report.json || true
+          npm audit --audit-level=high > npm-audit-summary.txt || true
+
+          # Count vulnerabilities by severity
+          HIGH_VULNS=$(jq '.metadata.vulnerabilities.high // 0' npm-audit-report.json)
+          CRITICAL_VULNS=$(jq '.metadata.vulnerabilities.critical // 0' npm-audit-report.json)
+          TOTAL_VULNS=$(jq '.metadata.vulnerabilities.total // 0' npm-audit-report.json)
+
+          echo "high_vulnerabilities=$HIGH_VULNS" >> $GITHUB_OUTPUT
+          echo "critical_vulnerabilities=$CRITICAL_VULNS" >> $GITHUB_OUTPUT
+          echo "total_vulnerabilities=$TOTAL_VULNS" >> $GITHUB_OUTPUT
+
+          echo "📊 Vulnerability Summary:"
+          echo "- Total: $TOTAL_VULNS"
+          echo "- Critical: $CRITICAL_VULNS"
+          echo "- High: $HIGH_VULNS"
+
+      # Snyk security scanning with detailed reporting
+      - name: Run Snyk security scan
+        id: snyk-scan
+        uses: snyk/actions/node@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --json --severity-threshold=low
+          json: true
+        continue-on-error: true
+
+      # Upload security scan results to GitHub Security tab
+      - name: Upload Snyk results to GitHub Code Scanning
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: snyk.sarif
+        continue-on-error: true
+
+      # Check for outdated packages
+      - name: Check for outdated packages
+        id: outdated-check
+        run: |
+          echo "🔍 Checking for outdated packages..."
+          npm outdated --json > outdated-packages.json || true
+          OUTDATED_COUNT=$(jq 'length' outdated-packages.json)
+          echo "outdated_packages=$OUTDATED_COUNT" >> $GITHUB_OUTPUT
+          echo "📦 Found $OUTDATED_COUNT outdated packages"
+
+      # Generate comprehensive security report
+      - name: Generate security report
+        run: |
+          cat << EOF > SECURITY_REPORT.md
+          # 🛡️ Security Vulnerability Report
+
+          **Generated:** $(date)
+          **Repository:** ${{ github.repository }}
+          **Branch:** ${{ github.ref_name }}
+          **Commit:** ${{ github.sha }}
+
+          ## 📊 Summary
+
+          - **Total Vulnerabilities:** ${{ steps.npm-audit.outputs.total_vulnerabilities }}
+          - **Critical Vulnerabilities:** ${{ steps.npm-audit.outputs.critical_vulnerabilities }}
+          - **High Vulnerabilities:** ${{ steps.npm-audit.outputs.high_vulnerabilities }}
+          - **Outdated Packages:** ${{ steps.outdated-check.outputs.outdated_packages }}
+
+          ## 🚨 Critical Issues
+
+          EOF
+
+          if [ "${{ steps.npm-audit.outputs.critical_vulnerabilities }}" != "0" ]; then
+            echo "⚠️ **CRITICAL VULNERABILITIES DETECTED!**" >> SECURITY_REPORT.md
+            echo "" >> SECURITY_REPORT.md
+            echo "\`\`\`" >> SECURITY_REPORT.md
+            cat npm-audit-summary.txt >> SECURITY_REPORT.md
+            echo "\`\`\`" >> SECURITY_REPORT.md
+          else
+            echo "✅ No critical vulnerabilities detected." >> SECURITY_REPORT.md
+          fi
+
+          cat << EOF >> SECURITY_REPORT.md
+
+          ## 📋 Recommendations
+
+          1. **Update Dependencies:** Run \`npm update\` to update to latest compatible versions
+          2. **Audit Fixes:** Run \`npm audit fix\` to automatically fix vulnerabilities
+          3. **Manual Review:** Review and manually update dependencies with breaking changes
+          4. **Security Policies:** Ensure all team members follow security best practices
+
+          ## 🔗 Resources
+
+          - [npm audit documentation](https://docs.npmjs.com/cli/v9/commands/npm-audit)
+          - [Snyk vulnerability database](https://snyk.io/vuln/)
+          - [GitHub Security Advisory Database](https://github.com/advisories)
+
+          ---
+          *This report was automatically generated by GitHub Actions*
+          EOF
+
+      # Upload artifacts for manual review
+      - name: Upload security artifacts
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: security-scan-results
+          path: |
+            npm-audit-report.json
+            npm-audit-summary.txt
+            outdated-packages.json
+            SECURITY_REPORT.md
+          retention-days: 30
+
+      # Fail the workflow if critical vulnerabilities are found
+      - name: Check for blocking vulnerabilities
+        if: steps.npm-audit.outputs.critical_vulnerabilities != '0'
+        run: |
+          echo "🚨 CRITICAL VULNERABILITIES DETECTED!"
+          echo "Found ${{ steps.npm-audit.outputs.critical_vulnerabilities }} critical vulnerabilities"
+          echo "This blocks deployment until resolved."
+          echo ""
+          echo "To fix:"
+          echo "1. Run 'npm audit fix' locally"
+          echo "2. Review and test the fixes"
+          echo "3. Commit and push the changes"
+          exit 1
+
+      # Create issue for vulnerability tracking (only if vulnerabilities found)
+      - name: Create security issue
+        if: steps.npm-audit.outputs.total_vulnerabilities != '0'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('SECURITY_REPORT.md', 'utf8');
+
+            // Check if issue already exists
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: ['security', 'dependencies'],
+              state: 'open'
+            });
+
+            const existingIssue = issues.find(issue =>
+              issue.title.includes('Security Vulnerability Report')
+            );
+
+            if (existingIssue) {
+              // Update existing issue
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existingIssue.number,
+                body: `## 🔄 Updated Security Scan Results\n\n${report}`
+              });
+
+              console.log(`Updated existing issue #${existingIssue.number}`);
+            } else {
+              // Create new issue
+              const { data: newIssue } = await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: `🛡️ Security Vulnerability Report - ${new Date().toISOString().split('T')[0]}`,
+                body: report,
+                labels: ['security', 'dependencies', 'automated']
+              });
+
+              console.log(`Created new security issue #${newIssue.number}`);
+            }
+
+  dependabot-config:
+    name: Update Dependabot Configuration
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Create/Update Dependabot configuration
+        run: |
+          mkdir -p .github
+          cat << EOF > .github/dependabot.yml
+          version: 2
+          updates:
+            # Enable version updates for npm
+            - package-ecosystem: "npm"
+              directory: "/"
+              schedule:
+                interval: "weekly"
+                day: "monday"
+                time: "09:00"
+              open-pull-requests-limit: 10
+              reviewers:
+                - "${{ github.repository_owner }}"
+              assignees:
+                - "${{ github.repository_owner }}"
+              commit-message:
+                prefix: "security"
+                include: "scope"
+              labels:
+                - "dependencies"
+                - "security"
+              # Auto-approve and merge minor/patch security updates
+              groups:
+                security-updates:
+                  patterns:
+                    - "*"
+                  update-types:
+                    - "security"
+
+            # Enable security updates for GitHub Actions
+            - package-ecosystem: "github-actions"
+              directory: "/"
+              schedule:
+                interval: "weekly"
+                day: "monday"
+                time: "09:00"
+              commit-message:
+                prefix: "ci"
+                include: "scope"
+              labels:
+                - "github-actions"
+                - "security"
+          EOF
+
+      - name: Commit Dependabot configuration
+        run: |
+          git config --global user.name 'GitHub Actions'
+          git config --global user.email 'actions@github.com'
+
+          if git diff --quiet .github/dependabot.yml; then
+            echo "Dependabot configuration is up to date"
+          else
+            git add .github/dependabot.yml
+            git commit -m "security: update Dependabot configuration for automated dependency management
+
+            🤖 Generated with Claude Code"
+            git push
+            echo "Dependabot configuration updated"
+          fi

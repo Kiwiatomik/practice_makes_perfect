@@ -357,7 +357,7 @@ const AdminQuestionPopulator = () => {
                       <Form.Label>Select Lesson</Form.Label>
                       <Form.Select value={lessonId} onChange={(e) => setLessonId(e.target.value)}>
                         <option value="">Choose a lesson...</option>
-                        {courses.find(c => c.id === courseId)?.lessons.map((lesson: Lesson) => (
+                        {(courses.find(c => c.id === courseId) as any)?.lessons.map((lesson: Lesson) => (
                           <option key={lesson.id} value={lesson.id}>
                             {lesson.title} ({lesson.difficulty})
                           </option>

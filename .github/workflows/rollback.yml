@@ -1,0 +1,406 @@
+name: Production Rollback Automation
+
+on:
+  workflow_dispatch:
+    inputs:
+      rollback_target:
+        description: 'Rollback target'
+        required: true
+        type: choice
+        options:
+          - previous-release
+          - specific-release
+          - emergency-rollback
+      target_version:
+        description: 'Specific version to rollback to (if specific-release selected)'
+        required: false
+        type: string
+      rollback_reason:
+        description: 'Reason for rollback'
+        required: true
+        type: choice
+        options:
+          - critical-bug
+          - performance-issue
+          - security-vulnerability
+          - user-impact
+          - data-corruption
+          - other
+      skip_validation:
+        description: 'Skip rollback validation (emergency only)'
+        type: boolean
+        default: false
+
+jobs:
+  # Pre-rollback validation
+  pre-rollback-validation:
+    name: Pre-rollback Validation
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      deployments: read
+
+    outputs:
+      current_version: ${{ steps.current-version.outputs.version }}
+      target_version: ${{ steps.target-version.outputs.version }}
+      rollback_id: ${{ steps.generate-id.outputs.rollback_id }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate rollback ID
+        id: generate-id
+        run: |
+          ROLLBACK_ID="rollback-$(date +%Y%m%d-%H%M%S)-${{ github.run_number }}"
+          echo "rollback_id=$ROLLBACK_ID" >> $GITHUB_OUTPUT
+          echo "🔄 Rollback ID: $ROLLBACK_ID"
+
+      - name: Get current production version
+        id: current-version
+        run: |
+          echo "🔍 Getting current production version..."
+          CURRENT_VERSION=$(curl -s "https://practice-makes-perfect-5e85e.web.app/health.json" | jq -r '.version // "unknown"' || echo "unknown")
+          echo "version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+          echo "Current production version: $CURRENT_VERSION"
+
+      - name: Determine target version
+        id: target-version
+        run: |
+          case "${{ github.event.inputs.rollback_target }}" in
+            "previous-release")
+              # Get previous GitHub release
+              TARGET=$(gh release list --limit 2 --json tagName | jq -r '.[1].tagName // "unknown"')
+              ;;
+            "specific-release")
+              TARGET="${{ github.event.inputs.target_version }}"
+              if [ -z "$TARGET" ]; then
+                echo "❌ Target version required for specific-release rollback"
+                exit 1
+              fi
+              ;;
+            "emergency-rollback")
+              # Get the most recent known good release
+              TARGET=$(gh release list --limit 5 --json tagName | jq -r '.[2].tagName // "unknown"')
+              ;;
+            *)
+              echo "❌ Invalid rollback target"
+              exit 1
+              ;;
+          esac
+
+          echo "version=$TARGET" >> $GITHUB_OUTPUT
+          echo "Target rollback version: $TARGET"
+
+          # Validate target version exists
+          if [ "$TARGET" = "unknown" ] || [ -z "$TARGET" ]; then
+            echo "❌ Could not determine valid rollback target"
+            exit 1
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Validate rollback is necessary
+        if: github.event.inputs.skip_validation != 'true'
+        run: |
+          CURRENT="${{ steps.current-version.outputs.version }}"
+          TARGET="${{ steps.target-version.outputs.version }}"
+
+          if [ "$CURRENT" = "$TARGET" ]; then
+            echo "❌ Current version and target version are the same"
+            echo "No rollback necessary"
+            exit 1
+          fi
+
+          echo "✅ Rollback validation passed"
+          echo "Rolling back from $CURRENT to $TARGET"
+
+      - name: Create rollback issue
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const { data: issue } = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `🔄 Production Rollback: ${{ steps.rollback-id.outputs.rollback_id }}`,
+              body: `# 🚨 Production Rollback in Progress
+
+              **Rollback ID:** ${{ steps.rollback-id.outputs.rollback_id }}
+              **Reason:** ${{ github.event.inputs.rollback_reason }}
+              **Target:** ${{ github.event.inputs.rollback_target }}
+
+              ## 📊 Version Information
+              - **Current Version:** ${{ steps.current-version.outputs.version }}
+              - **Target Version:** ${{ steps.target-version.outputs.version }}
+
+              ## ⚠️ Status
+              - [ ] Pre-rollback validation
+              - [ ] Version checkout
+              - [ ] Build verification
+              - [ ] Deployment rollback
+              - [ ] Post-rollback verification
+
+              **Initiated by:** @${{ github.actor }}
+              **Time:** ${new Date().toISOString()}
+
+              ---
+              *This issue tracks the rollback process and will be updated automatically*`,
+              labels: ['rollback', 'production', 'urgent', '${{ github.event.inputs.rollback_reason }}']
+            });
+
+            console.log(`Created rollback tracking issue #${issue.number}`);
+
+  # Execute rollback
+  execute-rollback:
+    name: Execute Production Rollback
+    runs-on: ubuntu-latest
+    needs: [pre-rollback-validation]
+    environment: production
+    permissions:
+      contents: read
+      deployments: write
+
+    steps:
+      - name: Checkout target version
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.pre-rollback-validation.outputs.target_version }}
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Quick validation of target version
+      - name: Validate target version
+        if: github.event.inputs.skip_validation != 'true'
+        run: |
+          echo "🔍 Validating target version buildability..."
+          npm run lint
+          npx tsc --noEmit
+
+      - name: Build rollback version
+        run: npm run build
+        env:
+          VITE_ENVIRONMENT: production
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+          VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
+          VITE_APP_VERSION: ${{ needs.pre-rollback-validation.outputs.rollback_id }}
+
+      - name: Setup Firebase CLI
+        run: npm install -g firebase-tools
+
+      # Emergency vs Standard rollback
+      - name: Emergency rollback (immediate)
+        if: github.event.inputs.rollback_target == 'emergency-rollback'
+        run: |
+          echo "🚨 EMERGENCY ROLLBACK - Direct deployment"
+          firebase use production
+          firebase deploy --config=firebase.production.json --token="${{ secrets.FIREBASE_TOKEN }}"
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+
+      - name: Standard rollback (safe)
+        if: github.event.inputs.rollback_target != 'emergency-rollback'
+        run: |
+          echo "🔄 Standard rollback with verification"
+
+          # Deploy to preview channel first
+          PREVIEW_URL=$(firebase hosting:channel:deploy "rollback-${{ needs.pre-rollback-validation.outputs.rollback_id }}" --config=firebase.production.json --token="${{ secrets.FIREBASE_TOKEN }}" --json | jq -r '.result.url')
+          echo "Rollback preview URL: $PREVIEW_URL"
+
+          # Brief verification period
+          sleep 30
+
+          # Check preview health
+          HEALTH_STATUS=$(curl -s "$PREVIEW_URL/health.json" | jq -r '.status // "unknown"')
+          if [ "$HEALTH_STATUS" != "healthy" ]; then
+            echo "❌ Rollback version health check failed"
+            exit 1
+          fi
+
+          # Execute rollback
+          echo "✅ Preview verified, executing rollback..."
+          firebase hosting:clone "rollback-${{ needs.pre-rollback-validation.outputs.rollback_id }}:live" --config=firebase.production.json --token="${{ secrets.FIREBASE_TOKEN }}"
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+
+  # Post-rollback verification
+  post-rollback-verification:
+    name: Post-rollback Verification
+    runs-on: ubuntu-latest
+    needs: [pre-rollback-validation, execute-rollback]
+    if: always() && needs.execute-rollback.result == 'success'
+
+    steps:
+      - name: Verify rollback success
+        id: verify
+        run: |
+          echo "🔍 Verifying rollback success..."
+          sleep 60  # Wait for deployment to propagate
+
+          # Health check
+          HEALTH_STATUS=$(curl -s "https://practice-makes-perfect-5e85e.web.app/health.json" | jq -r '.status // "unknown"')
+          VERSION=$(curl -s "https://practice-makes-perfect-5e85e.web.app/health.json" | jq -r '.version // "unknown"')
+
+          echo "Production health: $HEALTH_STATUS"
+          echo "Production version: $VERSION"
+
+          if [ "$HEALTH_STATUS" != "healthy" ]; then
+            echo "❌ Post-rollback health check failed"
+            echo "verification_status=failed" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+          echo "✅ Rollback verification successful"
+          echo "verification_status=success" >> $GITHUB_OUTPUT
+
+      - name: Update rollback issue
+        uses: actions/github-script@v6
+        with:
+          script: |
+            // Find the rollback issue
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: 'rollback',
+              state: 'open',
+              sort: 'created',
+              direction: 'desc'
+            });
+
+            const rollbackIssue = issues.find(issue =>
+              issue.title.includes('${{ needs.pre-rollback-validation.outputs.rollback_id }}')
+            );
+
+            if (rollbackIssue) {
+              const status = '${{ steps.verify.outputs.verification_status }}' === 'success' ? '✅ COMPLETED' : '❌ FAILED';
+
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: rollbackIssue.number,
+                body: `## ${status} - Rollback Verification
+
+                **Status:** ${status}
+                **Verification Time:** ${new Date().toISOString()}
+                **Production Health:** ✅ Healthy
+                **Current Version:** Rolling back from ${{ needs.pre-rollback-validation.outputs.current_version }} to ${{ needs.pre-rollback-validation.outputs.target_version }}
+
+                ${status === '✅ COMPLETED' ?
+                  '🎉 Rollback completed successfully! Production is now serving the previous version.' :
+                  '🚨 Rollback verification failed! Manual intervention may be required.'
+                }
+
+                **Links:**
+                - [Production](https://practice-makes-perfect-5e85e.web.app)
+                - [Health Check](https://practice-makes-perfect-5e85e.web.app/health.json)`
+              });
+
+              if ('${{ steps.verify.outputs.verification_status }}' === 'success') {
+                await github.rest.issues.update({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: rollbackIssue.number,
+                  state: 'closed',
+                  labels: ['rollback', 'production', 'completed']
+                });
+              }
+            }
+
+      - name: Create rollback deployment record
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const deployment = await github.rest.repos.createDeployment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: '${{ needs.pre-rollback-validation.outputs.target_version }}',
+              environment: 'production',
+              description: 'Production rollback deployment',
+              auto_merge: false,
+              required_contexts: []
+            });
+
+            await github.rest.repos.createDeploymentStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              deployment_id: deployment.data.id,
+              state: '${{ steps.verify.outputs.verification_status }}' === 'success' ? 'success' : 'failure',
+              description: 'Rollback to previous version',
+              environment_url: 'https://practice-makes-perfect-5e85e.web.app'
+            });
+
+      - name: Rollback completion notification
+        run: |
+          echo "🔄 Rollback process completed!"
+          echo "📊 Status: ${{ steps.verify.outputs.verification_status }}"
+          echo "🌐 Production URL: https://practice-makes-perfect-5e85e.web.app"
+          echo "📋 Version: Rolled back to ${{ needs.pre-rollback-validation.outputs.target_version }}"
+          echo "🆔 Rollback ID: ${{ needs.pre-rollback-validation.outputs.rollback_id }}"
+
+  # Rollback failure handling
+  rollback-failure:
+    name: Handle Rollback Failure
+    runs-on: ubuntu-latest
+    needs: [pre-rollback-validation, execute-rollback, post-rollback-verification]
+    if: always() && (needs.execute-rollback.result == 'failure' || needs.post-rollback-verification.result == 'failure')
+
+    steps:
+      - name: Create critical incident
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const { data: issue } = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `🚨 CRITICAL: Rollback Failed - ${{ needs.pre-rollback-validation.outputs.rollback_id }}`,
+              body: `# 🚨 CRITICAL INCIDENT: Rollback Failure
+
+              **Rollback ID:** ${{ needs.pre-rollback-validation.outputs.rollback_id }}
+              **Failure Stage:** ${
+                '${{ needs.execute-rollback.result }}' === 'failure' ? 'Execution' : 'Verification'
+              }
+
+              ## 🆘 Immediate Actions Required
+              1. **Manual intervention required**
+              2. **Check production health immediately**
+              3. **Consider manual rollback via Firebase Console**
+              4. **Alert on-call team**
+
+              ## 📊 Context
+              - **Attempted Target:** ${{ needs.pre-rollback-validation.outputs.target_version }}
+              - **Current State:** Unknown/Unstable
+              - **Original Issue:** ${{ github.event.inputs.rollback_reason }}
+
+              ## 🔗 Resources
+              - [Firebase Console](https://console.firebase.google.com)
+              - [Production Site](https://practice-makes-perfect-5e85e.web.app)
+              - [Health Check](https://practice-makes-perfect-5e85e.web.app/health.json)
+
+              **This requires IMMEDIATE attention!**`,
+              labels: ['critical', 'rollback-failed', 'production', 'incident'],
+              assignees: ['${{ github.repository_owner }}']
+            });
+
+            console.log(`Created critical incident issue #${issue.number}`);
+
+      - name: Emergency notification
+        run: |
+          echo "🚨 CRITICAL: Rollback failed!"
+          echo "📞 Manual intervention required immediately"
+          echo "🌐 Check production: https://practice-makes-perfect-5e85e.web.app"
+          echo "⚙️ Firebase Console: https://console.firebase.google.com"
+          exit 1

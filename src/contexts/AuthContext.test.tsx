@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, waitFor, act } from '@testing-library/react'
 import { onAuthStateChanged, signOut, User } from 'firebase/auth'
-import { ReactNode } from 'react'
 
 // Override the global AuthContext mock for this test file
 vi.mock('./AuthContext', async (importOriginal) => {
@@ -16,7 +15,16 @@ vi.mock('firebase/auth', () => ({
 }))
 
 vi.mock('../config/firebase', () => ({
-  auth: { mocked: true }
+  auth: { mocked: true },
+  analytics: null,
+  performance: {
+    trace: vi.fn(() => ({
+      start: vi.fn(),
+      stop: vi.fn(),
+      putAttribute: vi.fn(),
+      putMetric: vi.fn(),
+    })),
+  },
 }))
 
 const mockOnAuthStateChanged = vi.mocked(onAuthStateChanged)
@@ -52,7 +60,7 @@ const TestComponentOutsideProvider = () => {
 
 describe('AuthContext', () => {
   let unsubscribeCallback: ReturnType<typeof vi.fn>
-  let authStateCallback: (user: User | null) => void
+  let authStateCallback: any
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -63,7 +71,7 @@ describe('AuthContext', () => {
 
     // Setup mock for onAuthStateChanged
     unsubscribeCallback = vi.fn()
-    mockOnAuthStateChanged.mockImplementation((auth, callback) => {
+    mockOnAuthStateChanged.mockImplementation((_, callback) => {
       authStateCallback = callback
       return unsubscribeCallback
     })
@@ -279,7 +287,7 @@ describe('AuthContext', () => {
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
       // Test the logout function behavior by calling signOut directly
-      await expect(mockSignOut()).rejects.toThrow('Sign out failed')
+      await expect(mockSignOut({ mocked: true } as any)).rejects.toThrow('Sign out failed')
       expect(consoleSpy).not.toHaveBeenCalled() // Console.error is called in the AuthContext component
 
       // Verify that the mock is configured correctly
@@ -292,7 +300,7 @@ describe('AuthContext', () => {
       mockSignOut.mockRejectedValue(networkError)
 
       // Test the logout function behavior by calling signOut directly
-      await expect(mockSignOut()).rejects.toThrow('Network error')
+      await expect(mockSignOut({ mocked: true } as any)).rejects.toThrow('Network error')
       
       // Verify that the mock is configured correctly
       expect(mockSignOut).toHaveBeenCalledTimes(1)

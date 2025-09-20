@@ -22,7 +22,9 @@ const createMockLesson = (overrides: Partial<Lesson> = {}): Lesson => ({
   createdBy: {
     id: 'user-123',
     email: 'instructor@example.com',
-    displayName: 'Dr. Math'
+    displayName: 'Dr. Math',
+    createdAt: new Date(),
+    lastActive: new Date()
   },
   ...overrides
 })
@@ -41,7 +43,6 @@ const createMockPrompt = (overrides: Partial<Prompt> = {}): Prompt => ({
   difficulty: 'Medium',
   level: 'Bachelor',
   createdAt: new Date(),
-  updatedAt: new Date(),
   ...overrides
 })
 

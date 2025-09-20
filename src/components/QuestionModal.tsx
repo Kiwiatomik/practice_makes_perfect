@@ -21,7 +21,6 @@ interface QuestionModalProps {
   onAnswerChange: (value: string) => void
   onSubmitAnswer: () => void
   onGenerateQuestion: (type: 'practice' | 'nextLevel') => void
-  onGetSolution: () => void
   isGeneratingQuestion: boolean
   isLoadingSolution: boolean
   solutionError: string | null
@@ -41,7 +40,6 @@ function QuestionModal({
   onAnswerChange,
   onSubmitAnswer,
   onGenerateQuestion,
-  onGetSolution,
   isGeneratingQuestion,
   isLoadingSolution,
   solutionError,

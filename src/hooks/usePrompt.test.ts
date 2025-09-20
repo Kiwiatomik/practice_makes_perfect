@@ -29,7 +29,6 @@ const createMockPrompt = (overrides: Partial<Prompt> = {}): Prompt => ({
   difficulty: 'Medium',
   level: 'Bachelor',
   createdAt: new Date(),
-  updatedAt: new Date(),
   ...overrides
 })
 
@@ -115,7 +114,7 @@ describe('usePrompt hook', () => {
         loading: false,
       } as any)
       
-      const mockPrompt = createMockPrompt({ workings: null })
+      const mockPrompt = createMockPrompt({ workings: undefined })
       const { result } = renderHook(() => usePrompt(mockPrompt))
       
       await act(async () => {
@@ -149,7 +148,7 @@ describe('usePrompt hook', () => {
       
       mockAiService.solveQuestionWithAI.mockResolvedValue(mockResponse)
       
-      const mockPrompt = createMockPrompt({ workings: null })
+      const mockPrompt = createMockPrompt({ workings: undefined })
       const { result } = renderHook(() => usePrompt(mockPrompt))
       
       await act(async () => {
@@ -171,7 +170,7 @@ describe('usePrompt hook', () => {
       const mockResponse = '```json\n{"workings": [{"format": "title", "content": "Solution"}], "answer": "result"}\n```'
       mockAiService.solveQuestionWithAI.mockResolvedValue(mockResponse)
       
-      const mockPrompt = createMockPrompt({ workings: null })
+      const mockPrompt = createMockPrompt({ workings: undefined })
       const { result } = renderHook(() => usePrompt(mockPrompt))
       
       await act(async () => {
@@ -187,7 +186,7 @@ describe('usePrompt hook', () => {
     it('should handle AI service errors gracefully', async () => {
       mockAiService.solveQuestionWithAI.mockRejectedValue(new Error('API Error'))
       
-      const mockPrompt = createMockPrompt({ workings: null })
+      const mockPrompt = createMockPrompt({ workings: undefined })
       const { result } = renderHook(() => usePrompt(mockPrompt))
       
       await act(async () => {
@@ -201,7 +200,7 @@ describe('usePrompt hook', () => {
     it('should handle JSON parse errors gracefully', async () => {
       mockAiService.solveQuestionWithAI.mockResolvedValue('invalid json response')
       
-      const mockPrompt = createMockPrompt({ workings: null })
+      const mockPrompt = createMockPrompt({ workings: undefined })
       const { result } = renderHook(() => usePrompt(mockPrompt))
       
       await act(async () => {
@@ -219,7 +218,7 @@ describe('usePrompt hook', () => {
       })
       mockAiService.solveQuestionWithAI.mockReturnValue(aiPromise)
       
-      const mockPrompt = createMockPrompt({ workings: null })
+      const mockPrompt = createMockPrompt({ workings: undefined })
       const { result } = renderHook(() => usePrompt(mockPrompt))
       
       // Start the operation

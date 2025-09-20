@@ -59,7 +59,7 @@ export const deepseekMessages: DeepseekMessageConfig = {
 
   Any deviation from that format WILL NOT BE TOLERATED!
   
-  CRITICAL FORMATTING REQUIREMENT: Return ONLY the raw JSON object. Do not wrap your response in markdown code blocks (```json), do not add explanatory text before or after, do not use backticks or any other formatting. Your entire response must be a valid JSON object starting with { and ending with }.
+  CRITICAL FORMATTING REQUIREMENT: Return ONLY the raw JSON object. Do not wrap your response in markdown code blocks (\`\`\`json), do not add explanatory text before or after, do not use backticks or any other formatting. Your entire response must be a valid JSON object starting with { and ending with }.
   `,
   userMessageTemplate: 'Solve the following problem: "{promptText}"'
 };
@@ -122,7 +122,7 @@ export const deepseekMessagePracticeAgain: DeepseekMessageConfig = {
 
   Any deviation from that format WILL NOT BE TOLERATED!
   
-  CRITICAL FORMATTING REQUIREMENT: Return ONLY the raw JSON object. Do not wrap your response in markdown code blocks (```json), do not add explanatory text before or after, do not use backticks or any other formatting. Your entire response must be a valid JSON object starting with { and ending with }.
+  CRITICAL FORMATTING REQUIREMENT: Return ONLY the raw JSON object. Do not wrap your response in markdown code blocks (\`\`\`json), do not add explanatory text before or after, do not use backticks or any other formatting. Your entire response must be a valid JSON object starting with { and ending with }.
   `,
   userMessageTemplate: 'I will give you a problem. I want you to generate a similar question, only changing some number, name and setting. Then you will solve the question you have generated. The problem is the following: "{promptText}"'
 };
@@ -186,7 +186,7 @@ export const deepseekMessageNextLevel: DeepseekMessageConfig = {
 
   Any deviation from that format WILL NOT BE TOLERATED!
   
-  CRITICAL FORMATTING REQUIREMENT: Return ONLY the raw JSON object. Do not wrap your response in markdown code blocks (```json), do not add explanatory text before or after, do not use backticks or any other formatting. Your entire response must be a valid JSON object starting with { and ending with }.
+  CRITICAL FORMATTING REQUIREMENT: Return ONLY the raw JSON object. Do not wrap your response in markdown code blocks (\`\`\`json), do not add explanatory text before or after, do not use backticks or any other formatting. Your entire response must be a valid JSON object starting with { and ending with }.
   `,
   userMessageTemplate: 'I will give you a problem. I want you to generate a similar question with one level of abstraction added, then solve the question you have generated. The problem is the following: "{promptText}"'
 };

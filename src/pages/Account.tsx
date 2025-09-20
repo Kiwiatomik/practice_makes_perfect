@@ -7,14 +7,14 @@ import Button from 'react-bootstrap/Button'
 import Form from 'react-bootstrap/Form'
 import Alert from 'react-bootstrap/Alert'
 import Spinner from 'react-bootstrap/Spinner'
-import { updateEmail, updatePassword, reauthenticateWithCredential, EmailAuthProvider, sendEmailVerification, deleteUser } from 'firebase/auth'
+import { updateEmail, updatePassword, reauthenticateWithCredential, EmailAuthProvider, sendEmailVerification, deleteUser, AuthError } from 'firebase/auth'
 import { useAuth } from '../contexts/AuthContext'
 import { useTheme } from '../contexts/ThemeContext'
 import { ThemeToggle } from '../components/shared/ThemeToggle'
 
 const Account = () => {
   const { currentUser } = useAuth()
-  const { theme } = useTheme()
+  useTheme() // Hook needed for theme context
   const [emailFormData, setEmailFormData] = useState({
     newEmail: '',
     currentPassword: ''
@@ -94,9 +94,10 @@ const Account = () => {
 
     } catch (err) {
       let errorMessage = 'Failed to update email'
-      
+
       if (err instanceof Error) {
-        switch (err.code || err.message) {
+        const firebaseError = err as AuthError
+        switch (firebaseError.code || err.message) {
           case 'auth/wrong-password':
             errorMessage = 'Current password is incorrect'
             break
@@ -162,9 +163,10 @@ const Account = () => {
 
     } catch (err) {
       let errorMessage = 'Failed to update password'
-      
+
       if (err instanceof Error) {
-        switch (err.code || err.message) {
+        const firebaseError = err as AuthError
+        switch (firebaseError.code || err.message) {
           case 'auth/wrong-password':
             errorMessage = 'Current password is incorrect'
             break
@@ -198,9 +200,10 @@ const Account = () => {
       setSuccess(prev => ({ ...prev, verification: 'Verification email sent! Please check your inbox.' }))
     } catch (err) {
       let errorMessage = 'Failed to send verification email'
-      
+
       if (err instanceof Error) {
-        switch (err.code) {
+        const firebaseError = err as AuthError
+        switch (firebaseError.code) {
           case 'auth/too-many-requests':
             errorMessage = 'Too many requests. Please wait before requesting another verification email.'
             break
@@ -242,9 +245,10 @@ const Account = () => {
       
     } catch (err) {
       let errorMessage = 'Failed to delete account'
-      
+
       if (err instanceof Error) {
-        switch (err.code || err.message) {
+        const firebaseError = err as AuthError
+        switch (firebaseError.code || err.message) {
           case 'auth/wrong-password':
             errorMessage = 'Current password is incorrect'
             break

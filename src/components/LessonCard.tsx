@@ -1,6 +1,5 @@
 import Card from 'react-bootstrap/Card'
 import Badge from 'react-bootstrap/Badge'
-import Button from 'react-bootstrap/Button'
 import Row from 'react-bootstrap/Row'
 import Col from 'react-bootstrap/Col'
 import { Link } from 'react-router'

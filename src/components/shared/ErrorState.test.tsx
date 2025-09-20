@@ -5,25 +5,27 @@ import ErrorState from './ErrorState'
 import React from 'react'
 
 // Mock react-bootstrap/Container
-vi.mock('react-bootstrap/Container', () => {
-  const React = require('react')
+vi.mock('react-bootstrap/Container', async () => {
+  const React = await import('react')
+  const MockContainer = React.forwardRef(({ children, className, ...props }: any, ref: any) => (
+    React.createElement('div', {
+      ref,
+      'data-testid': 'container',
+      className,
+      ...props
+    }, children)
+  ))
+  MockContainer.displayName = 'MockContainer'
   return {
-    default: React.forwardRef<HTMLDivElement, any>(({ children, className, ...props }, ref) => (
-      React.createElement('div', {
-        ref,
-        'data-testid': 'container',
-        className,
-        ...props
-      }, children)
-    ))
+    default: MockContainer
   }
 })
 
 // Mock react-bootstrap/Alert
-vi.mock('react-bootstrap/Alert', () => {
-  const React = require('react')
+vi.mock('react-bootstrap/Alert', async () => {
+  const React = await import('react')
   
-  const MockAlert = React.forwardRef<HTMLDivElement, any>(({ children, variant, className, ...props }, ref) => (
+  const MockAlert = React.forwardRef(({ children, variant, className, ...props }: any, ref: any) => (
     React.createElement('div', {
       ref,
       'data-testid': 'alert',
@@ -32,40 +34,46 @@ vi.mock('react-bootstrap/Alert', () => {
       ...props
     }, children)
   ))
+  MockAlert.displayName = 'MockAlert'
+
+  const MockAlertHeading = ({ children, ...props }: any) =>
+    React.createElement('h4', { 'data-testid': 'alert-heading', ...props }, children)
+  MockAlertHeading.displayName = 'MockAlertHeading'
 
   Object.assign(MockAlert, {
-    Heading: ({ children, ...props }: any) => 
-      React.createElement('h4', { 'data-testid': 'alert-heading', ...props }, children)
+    Heading: MockAlertHeading
   })
 
   return { default: MockAlert }
 })
 
 // Mock react-bootstrap/Button
-vi.mock('react-bootstrap/Button', () => {
-  const React = require('react')
-  return {
-    default: React.forwardRef<HTMLButtonElement, any>(({ children, variant, onClick, className, as: Component = 'button', to, ...props }, ref) => {
-      if (Component === 'a' || to) {
-        // Render as link when used with Link component
-        return React.createElement('a', {
-          ref,
-          'data-testid': 'button-link',
-          'data-variant': variant,
-          'data-to': to,
-          className,
-          ...props
-        }, children)
-      }
-      return React.createElement('button', {
+vi.mock('react-bootstrap/Button', async () => {
+  const React = await import('react')
+  const MockButton = React.forwardRef(({ children, variant, onClick, className, as: Component = 'button', to, ...props }: any, ref: any) => {
+    if (Component === 'a' || to) {
+      // Render as link when used with Link component
+      return React.createElement('a', {
         ref,
-        'data-testid': 'button',
+        'data-testid': 'button-link',
         'data-variant': variant,
+        'data-to': to,
         className,
-        onClick,
         ...props
       }, children)
-    })
+    }
+    return React.createElement('button', {
+      ref,
+      'data-testid': 'button',
+      'data-variant': variant,
+      className,
+      onClick,
+      ...props
+    }, children)
+  })
+  MockButton.displayName = 'MockButton'
+  return {
+    default: MockButton
   }
 })
 

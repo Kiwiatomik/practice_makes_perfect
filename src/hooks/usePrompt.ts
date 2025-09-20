@@ -238,7 +238,8 @@ export function usePrompt(initialPrompt: Prompt | null) {
             questionGenerationError: null,
             isLoadingSolution: false,
             solutionError: null,
-            solution: null
+            solution: null,
+            requiresAuth: false
           })
           
           console.log(`${type} question workings:`, parsedResponse.workings)
