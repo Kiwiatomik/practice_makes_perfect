@@ -1,6 +1,6 @@
 version: 2
 updates:
-  # Enable version updates for npm dependencies
+  # Enable version updates for npm
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
@@ -9,27 +9,22 @@ updates:
       time: "09:00"
     open-pull-requests-limit: 10
     reviewers:
-      - "${{ github.repository_owner }}"
+      - "Kiwiatomik"
     assignees:
-      - "${{ github.repository_owner }}"
+      - "Kiwiatomik"
     commit-message:
       prefix: "security"
       include: "scope"
     labels:
       - "dependencies"
       - "security"
-    # Group security updates together
+    # Auto-approve and merge minor/patch security updates
     groups:
       security-updates:
         patterns:
           - "*"
         update-types:
           - "security"
-      patch-updates:
-        patterns:
-          - "*"
-        update-types:
-          - "patch"
 
   # Enable security updates for GitHub Actions
   - package-ecosystem: "github-actions"
