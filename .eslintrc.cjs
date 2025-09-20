@@ -23,7 +23,7 @@ module.exports = {
     'react/prop-types': 'off', // We use TypeScript for prop validation
     'react/no-unescaped-entities': 'off', // Allow apostrophes in JSX
     '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_|^unused' }],
-    '@typescript-eslint/no-explicit-any': 'warn',
+    '@typescript-eslint/no-explicit-any': 'off', // Allow any for Firebase/external APIs
     'no-console': 'off', // Allow console statements in development
   },
   settings: {

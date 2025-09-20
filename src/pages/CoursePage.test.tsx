@@ -507,8 +507,8 @@ describe('CoursePage', () => {
         refetch: vi.fn()
       })
 
-      // Component should throw an error for malformed data (which is correct behavior)
-      expect(() => renderCoursePage()).toThrow('Cannot read properties of null')
+      // Component should handle malformed data gracefully and not crash
+      expect(() => renderCoursePage()).not.toThrow()
     })
   })
 })

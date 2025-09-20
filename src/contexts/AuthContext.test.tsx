@@ -50,12 +50,14 @@ const TestComponent = () => {
 
 // Component to test error case (useAuth outside provider)
 const TestComponentOutsideProvider = () => {
+  let result
   try {
-    const { currentUser } = useAuth()
-    return <div data-testid="outside-result">User: {currentUser?.email}</div>
+    const auth = useAuth()
+    result = <div data-testid="outside-result">User: {auth.currentUser?.email}</div>
   } catch (error) {
-    return <div data-testid="outside-error">{(error as Error).message}</div>
+    result = <div data-testid="outside-error">{(error as Error).message}</div>
   }
+  return result
 }
 
 describe('AuthContext', () => {

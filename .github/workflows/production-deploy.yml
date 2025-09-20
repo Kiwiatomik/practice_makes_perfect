@@ -135,7 +135,7 @@ jobs:
           EOF
 
       - name: Upload deployment artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: deployment-readiness-${{ steps.generate-id.outputs.deployment_id }}
           path: DEPLOYMENT_READINESS.md

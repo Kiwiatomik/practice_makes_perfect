@@ -71,8 +71,8 @@ jobs:
 
       # Upload security scan results to GitHub Security tab
       - name: Upload Snyk results to GitHub Code Scanning
-        uses: github/codeql-action/upload-sarif@v2
-        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        if: always() && hashFiles('snyk.sarif') != ''
         with:
           sarif_file: snyk.sarif
         continue-on-error: true
@@ -140,7 +140,7 @@ jobs:
 
       # Upload artifacts for manual review
       - name: Upload security artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: always()
         with:
           name: security-scan-results

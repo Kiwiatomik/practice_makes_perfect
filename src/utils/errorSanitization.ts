@@ -45,9 +45,9 @@ export const sanitizeErrorMessage = (error: string | Error | unknown): string =>
       return 'Network error. Please check your connection and try again.'
     }
     
-    if (errorString.toLowerCase().includes('not found') || 
+    if (errorString.toLowerCase().includes('not found') ||
         errorString.toLowerCase().includes('does not exist')) {
-      return 'The requested content was not found.'
+      return 'The requested resource was not found'
     }
     
     // Generic fallback for any other sensitive errors

@@ -97,7 +97,7 @@ describe('useSearchCourses hook', () => {
       const mockCourses = [createMockCourse()]
       mockCoursesService.getAllCourses.mockResolvedValue(mockCourses)
       
-      const { result: _ } = renderHook(() => useSearchCourses({
+      renderHook(() => useSearchCourses({
         searchTerm: 'calculus'
       }))
       
@@ -115,7 +115,7 @@ describe('useSearchCourses hook', () => {
       const mockCourses = [createMockCourse()]
       mockCoursesService.getAllCourses.mockResolvedValue(mockCourses)
       
-      const { result: _ } = renderHook(() => useSearchCourses({
+      renderHook(() => useSearchCourses({
         selectedSubject: 'Physics'
       }))
       
@@ -161,7 +161,7 @@ describe('useSearchCourses hook', () => {
       const mockCourses = [createMockCourse()]
       mockCoursesService.getAllCourses.mockResolvedValue(mockCourses)
       
-      const { result: _ } = renderHook(() => useSearchCourses({
+      renderHook(() => useSearchCourses({
         searchTerm: 'calculus',
         selectedSubject: 'Mathematics',
         selectedLevel: 'bachelor'
@@ -183,7 +183,7 @@ describe('useSearchCourses hook', () => {
       const mockCourses = [createMockCourse()]
       mockCoursesService.getAllCourses.mockResolvedValue(mockCourses)
       
-      const { result: _ } = renderHook(() => useSearchCourses({
+      renderHook(() => useSearchCourses({
         selectedLevel: 'unknown'
       }))
       
@@ -200,7 +200,7 @@ describe('useSearchCourses hook', () => {
       const mockCourses = [createMockCourse()]
       mockCoursesService.getAllCourses.mockResolvedValue(mockCourses)
       
-      const { result: _ } = renderHook(() => useSearchCourses({
+      renderHook(() => useSearchCourses({
         searchTerm: '',
         selectedSubject: '',
         selectedLevel: ''

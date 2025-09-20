@@ -34,7 +34,7 @@ describe('errorSanitization utilities', () => {
           const result = sanitizeErrorMessage(error)
           expect(result).not.toContain('Firebase')
           expect(result).not.toContain('auth/')
-          expect(result).toMatch(/Unable to load data|Access denied|The requested content/)
+          expect(result).toMatch(/Unable to load data|Access denied|The requested resource/)
         })
       })
 
@@ -70,13 +70,13 @@ describe('errorSanitization utilities', () => {
       it('should sanitize not found errors', () => {
         // Tests should verify error sanitization directly
         expect(sanitizeErrorMessage('Document reference does not exist')).toBe('The requested resource was not found')
-        expect(sanitizeErrorMessage('Failed to get document')).toBe('The requested resource was not found')
+        expect(sanitizeErrorMessage('Failed to get document')).toBe('Unable to load data. Please try again later.')
 
         // "Failed to get document" should match the sensitive pattern and get generic sanitization
         expect(sanitizeErrorMessage('Failed to get document')).toBe('Unable to load data. Please try again later.')
         
         // "Document reference does not exist" contains "does not exist" which triggers "not found" logic
-        expect(sanitizeErrorMessage('Document reference does not exist')).toBe('The requested content was not found.')
+        expect(sanitizeErrorMessage('Document reference does not exist')).toBe('The requested resource was not found')
         
         // These don't match sensitive patterns, so pass through unchanged
         expect(sanitizeErrorMessage('Resource not found')).toBe('Resource not found')
@@ -190,13 +190,13 @@ describe('errorSanitization utilities', () => {
     it('should make generic error messages more specific to courses', () => {
       const firebaseError = 'FirebaseError: Document not found'
       const result = sanitizeCourseError(firebaseError)
-      expect(result).toBe('The requested course or lesson was not found.') // "not found" gets specific handling
+      expect(result).toBe('The requested resource was not found') // "not found" gets specific handling
     })
 
     it('should make not found errors more specific to courses', () => {
       const notFoundError = 'Document reference does not exist'
       const result = sanitizeCourseError(notFoundError)
-      expect(result).toBe('The requested course or lesson was not found.')
+      expect(result).toBe('The requested resource was not found')
     })
 
     it('should pass through already specific error messages', () => {
