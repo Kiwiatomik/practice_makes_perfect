@@ -85,47 +85,10 @@ jobs:
       - name: Setup Firebase CLI
         run: npm install -g firebase-tools
 
-      - name: List available Firebase projects (debug)
-        run: firebase projects:list --token="${{ secrets.FIREBASE_TOKEN }}"
-        continue-on-error: true
-        env:
-          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
-
-      - name: Get actual project ID
-        id: get-project
-        run: |
-          # Get the project ID from the projects list (first project)
-          PROJECT_LIST=$(firebase projects:list --token="${{ secrets.FIREBASE_TOKEN }}" 2>/dev/null || echo "failed")
-          if [ "$PROJECT_LIST" = "failed" ]; then
-            echo "Failed to get projects list"
-            exit 1
-          fi
-
-          # Extract project ID from the table output (assuming it's in the second column)
-          PROJECT_ID=$(echo "$PROJECT_LIST" | grep -v "Project Display Name" | grep -v "^┌\|^├\|^└\|^│ Project Display Name" | grep "│" | head -1 | sed 's/.*│ \([^│]*\) │.*/\1/' | xargs)
-
-          if [ -z "$PROJECT_ID" ] || [ "$PROJECT_ID" = "***" ]; then
-            echo "Could not extract project ID, trying common patterns..."
-            # Try some common project ID patterns based on your setup
-            for id in "practice-makes-perfect" "practice-makes-perfect-5e85e" "practicemakesperfect"; do
-              echo "Trying project ID: $id"
-              if firebase projects:list --token="${{ secrets.FIREBASE_TOKEN }}" | grep -q "$id"; then
-                PROJECT_ID="$id"
-                break
-              fi
-            done
-          fi
-
-          echo "project_id=$PROJECT_ID" >> $GITHUB_OUTPUT
-          echo "Using project ID: $PROJECT_ID"
-        env:
-          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
-
       - name: Deploy to production
         run: |
-          PROJECT_ID="${{ steps.get-project.outputs.project_id }}"
-          echo "Deploying to project: $PROJECT_ID"
-          firebase deploy --only hosting --project="$PROJECT_ID" --token="${{ secrets.FIREBASE_TOKEN }}"
+          echo "Deploying to project: practice-makes-perfect-5e85e"
+          firebase deploy --only hosting --project="practice-makes-perfect-5e85e" --token="${{ secrets.FIREBASE_TOKEN }}"
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
 
