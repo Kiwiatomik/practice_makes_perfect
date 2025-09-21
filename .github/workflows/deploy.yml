@@ -89,9 +89,16 @@ jobs:
         run: firebase projects:list --token="${{ secrets.FIREBASE_TOKEN }}"
         continue-on-error: true
 
+      - name: Get first available project ID
+        id: get-project
+        run: |
+          PROJECT_ID=$(firebase projects:list --token="${{ secrets.FIREBASE_TOKEN }}" --format=json | jq -r '.[0].projectId')
+          echo "project_id=$PROJECT_ID" >> $GITHUB_OUTPUT
+          echo "Using project ID: $PROJECT_ID"
+
       - name: Deploy to production
         run: |
-          firebase use practice-makes-perfect
+          firebase use ${{ steps.get-project.outputs.project_id }}
           firebase deploy --only hosting --token="${{ secrets.FIREBASE_TOKEN }}"
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
