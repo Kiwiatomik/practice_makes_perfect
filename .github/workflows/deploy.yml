@@ -91,8 +91,8 @@ jobs:
 
       - name: Deploy to production
         run: |
-          firebase use practice-makes-perfect-5e85e
-          firebase deploy --config=firebase.production.json --token="${{ secrets.FIREBASE_TOKEN }}"
+          firebase use practice-makes-perfect
+          firebase deploy --only hosting --token="${{ secrets.FIREBASE_TOKEN }}"
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
 
