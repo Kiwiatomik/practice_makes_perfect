@@ -161,6 +161,7 @@ jobs:
     permissions:
       contents: read
       deployments: write
+      issues: write
 
     steps:
       - name: Checkout target version
@@ -172,7 +173,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
           cache: 'npm'
 
       - name: Install dependencies
@@ -243,6 +244,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: [pre-rollback-validation, execute-rollback]
     if: always() && needs.execute-rollback.result == 'success'
+    permissions:
+      issues: write
 
     steps:
       - name: Verify rollback success
@@ -357,6 +360,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: [pre-rollback-validation, execute-rollback, post-rollback-verification]
     if: always() && (needs.execute-rollback.result == 'failure' || needs.post-rollback-verification.result == 'failure')
+    permissions:
+      issues: write
 
     steps:
       - name: Create critical incident
