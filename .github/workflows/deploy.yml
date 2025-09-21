@@ -14,6 +14,7 @@ jobs:
     if: github.ref == 'refs/heads/main'
     permissions:
       security-events: write
+      contents: write
     steps:
       - uses: actions/checkout@v4
 
@@ -99,16 +100,12 @@ jobs:
           echo "Health check: https://practice-makes-perfect-5e85e.web.app/health.json"
 
       - name: Create GitHub release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: v${{ github.run_number }}
-          release_name: Release v${{ github.run_number }}
-          body: |
-            Automated release from commit ${{ github.sha }}
+        run: |
+          gh release create v${{ github.run_number }} \
+            --title "Release v${{ github.run_number }}" \
+            --notes "Automated release from commit ${{ github.sha }}
 
-            Changes in this release:
-            ${{ github.event.head_commit.message }}
-          draft: false
-          prerelease: false
+          Changes in this release:
+          ${{ github.event.head_commit.message }}"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
