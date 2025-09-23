@@ -1,0 +1,72 @@
+{
+  "auditReportVersion": 2,
+  "vulnerabilities": {
+    "vite": {
+      "name": "vite",
+      "severity": "low",
+      "isDirect": true,
+      "via": [
+        {
+          "source": 1107325,
+          "name": "vite",
+          "dependency": "vite",
+          "title": "Vite middleware may serve files starting with the same name with the public directory",
+          "url": "https://github.com/advisories/GHSA-g4jq-h2w9-997c",
+          "severity": "low",
+          "cwe": [
+            "CWE-22",
+            "CWE-200",
+            "CWE-284"
+          ],
+          "cvss": {
+            "score": 0,
+            "vectorString": null
+          },
+          "range": ">=7.0.0 <=7.0.6"
+        },
+        {
+          "source": 1107329,
+          "name": "vite",
+          "dependency": "vite",
+          "title": "Vite's `server.fs` settings were not applied to HTML files",
+          "url": "https://github.com/advisories/GHSA-jqfw-vq24-v9c3",
+          "severity": "low",
+          "cwe": [
+            "CWE-23",
+            "CWE-200",
+            "CWE-284"
+          ],
+          "cvss": {
+            "score": 0,
+            "vectorString": null
+          },
+          "range": ">=7.0.0 <=7.0.6"
+        }
+      ],
+      "effects": [],
+      "range": "7.0.0 - 7.0.6",
+      "nodes": [
+        "node_modules/vite"
+      ],
+      "fixAvailable": true
+    }
+  },
+  "metadata": {
+    "vulnerabilities": {
+      "info": 0,
+      "low": 1,
+      "moderate": 0,
+      "high": 0,
+      "critical": 0,
+      "total": 1
+    },
+    "dependencies": {
+      "prod": 222,
+      "dev": 409,
+      "optional": 72,
+      "peer": 7,
+      "peerOptional": 0,
+      "total": 639
+    }
+  }
+}
